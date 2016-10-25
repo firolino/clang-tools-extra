@@ -132,6 +132,7 @@ Clang-Tidy Checks
    readability-misplaced-array-index
    readability-named-parameter
    readability-non-const-parameter
+   readability-one-name-per-declaration
    readability-redundant-control-flow
    readability-redundant-member-init
    readability-redundant-smartptr-get

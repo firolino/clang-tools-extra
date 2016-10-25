@@ -22,6 +22,7 @@
 #include "MisplacedArrayIndexCheck.h"
 #include "NamedParameterCheck.h"
 #include "NonConstParameterCheck.h"
+#include "OneNamePerDeclarationCheck.h"
 #include "RedundantControlFlowCheck.h"
 #include "RedundantMemberInitCheck.h"
 #include "RedundantSmartptrGetCheck.h"
@@ -58,6 +59,8 @@ public:
         "readability-inconsistent-declaration-parameter-name");
     CheckFactories.registerCheck<MisplacedArrayIndexCheck>(
         "readability-misplaced-array-index");
+    CheckFactories.registerCheck<OneNamePerDeclarationCheck>(
+        "readability-one-name-per-declaration");
     CheckFactories.registerCheck<RedundantMemberInitCheck>(
         "readability-redundant-member-init");
     CheckFactories.registerCheck<StaticDefinitionInAnonymousNamespaceCheck>(
