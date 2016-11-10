@@ -4,7 +4,7 @@
 void dontTouchParameter(int param1, int param2)
 {}
 
-int returner(void)
+int returner(void) 
 {
     int f0 = 0, f1 = 1;
     // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
@@ -14,7 +14,7 @@ int returner(void)
     return 3;
 }
 
-struct StructOne
+struct StructOne 
 {
     StructOne(){}
     StructOne(int b){}
@@ -22,8 +22,30 @@ struct StructOne
     int cantTouch1, cantTouch2;
 };
 
-void complex()
+void complex() 
 {
+    typedef int* IntPtr;
+    typedef int ArrayType[2];
+    typedef int FunType(void);
+    
+    IntPtr intptr1, intptr2 = nullptr, intptr3;
+    // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
+    // CHECK-FIXES: {{^....}}IntPtr intptr1;
+    // CHECK-FIXES: {{^....}}IntPtr intptr2 = nullptr;
+    // CHECK-FIXES: {{^....}}IntPtr intptr3;
+    
+    ArrayType arraytype1, arraytype2 = {1}, arraytype3;
+    // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
+    // CHECK-FIXES: {{^....}}ArrayType arraytype1;
+    // CHECK-FIXES: {{^....}}ArrayType arraytype2 = {1};
+    // CHECK-FIXES: {{^....}}ArrayType arraytype3;
+    
+    FunType funtype1, funtype2, functype3;
+    // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
+    // CHECK-FIXES: {{^....}}FunType funtype1;
+    // CHECK-FIXES: {{^....}}FunType funtype2;
+    // CHECK-FIXES: {{^....}}FunType functype3;
+    
     for(int index1 = 0, index2 = 0;;)
     {
         int localFor1 = 1, localFor2 = 2;
@@ -31,7 +53,7 @@ void complex()
         // CHECK-FIXES: {{^        }}int localFor1 = 1;
         // CHECK-FIXES: {{^        }}int localFor2 = 2;
     }
-
+    
     int v1, v2(3), v3, v4(4), v5{2}, v6 = {3};
     // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
     // CHECK-FIXES: {{^    }}int v1;
@@ -41,13 +63,14 @@ void complex()
     // CHECK-FIXES: {{^    }}int v5{2};
     // CHECK-FIXES: {{^    }}int v6 = {3};
     
-    StructOne s1, s2(23), s3, s4(3);
+    StructOne s1, s2(23), s3, s4(3), *sptr = new StructOne(2);
     // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
     // CHECK-FIXES: {{^    }}StructOne s1;
     // CHECK-FIXES: {{^    }}StructOne s2(23);
     // CHECK-FIXES: {{^    }}StructOne s3;
     // CHECK-FIXES: {{^    }}StructOne s4(3);
-
+    // CHECK-FIXES: {{^    }}StructOne *sptr = new StructOne(2);
+    
     int *ptrArray[3], dummy, **ptrArray2[5], twoDim[2][3], *twoDimPtr[2][3];
     // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
     // CHECK-FIXES: {{^    }}int *ptrArray[3];
@@ -74,17 +97,17 @@ void complex()
         }
     
     struct S { int a; const int b; };
-
+    
     int S::*p = &S::a, S::* const q = &S::a;
     // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
     // CHECK-FIXES: {{^    }}int S::*p = &S::a;
     // CHECK-FIXES: {{^    }}int S::* const q = &S::a;
-
+    
     const int S::*r = &S::b, S::*t;
     // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
     // CHECK-FIXES: {{^    }}const int S::*r = &S::b;
     // CHECK-FIXES: {{^    }}const int S::*t;
-
+    
     typedef const int S::*MemPtr;
     MemPtr aaa =  &S::a, bbb = &S::b;
     // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]

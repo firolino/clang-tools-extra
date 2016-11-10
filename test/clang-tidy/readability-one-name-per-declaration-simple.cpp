@@ -1,18 +1,18 @@
 // RUN: %check_clang_tidy %s readability-one-name-per-declaration %t
 
-int dontTouchA, dontTouchB;
+int cantTouchA, cantTouchB;
 
-void simple()
+void simple() 
 {
     int dontTouchC;
-
+    
     long empty;
     long long1 = 11, *long2 = &empty, * long3 = &empty;
     // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
     // CHECK-FIXES: {{^    }}long long1 = 11;
     // CHECK-FIXES: {{^    }}long *long2 = &empty;
     // CHECK-FIXES: {{^    }}long * long3 = &empty;
-
+    
     long ** lint1, lint2 = 0, * lint3, **linn;
     // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
     // CHECK-FIXES: {{^    }}long ** lint1;
@@ -26,37 +26,35 @@ void simple()
     	// CHECK-FIXES: {{^    	}}long int *lint5;
     	// CHECK-FIXES: {{^    	}}long int lint6;
     
-
     unsigned int uint1 = 0, uint2 = 44u, uint3, uint4=4;
     // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
     // CHECK-FIXES: {{^    }}unsigned int uint1 = 0;
     // CHECK-FIXES: {{^    }}unsigned int uint2 = 44u;
     // CHECK-FIXES: {{^    }}unsigned int uint3;
     // CHECK-FIXES: {{^    }}unsigned int uint4=4;
-
+    
     double darray1[] = {}, darray2[] = {1,	2}, dv1 = 3, dv2;
     // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
     // CHECK-FIXES: {{^    }}double darray1[] = {};
     // CHECK-FIXES: {{^    }}double darray2[] = {1,	2};
     // CHECK-FIXES: {{^    }}double dv1 = 3;
     // CHECK-FIXES: {{^    }}double dv2;
-
+    
     int notransform[] =   {
                               1,
                               2
                           };
-
+    
     const int cx = 1, cy = 2;
     // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
     // CHECK-FIXES: {{^    }}const int cx = 1;
     // CHECK-FIXES: {{^    }}const int cy = 2;
     
-    
     volatile int vx, vy;
     // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
     // CHECK-FIXES: {{^    }}volatile int vx;
     // CHECK-FIXES: {{^    }}volatile int vy;
-
+    
     signed char sc1 = 'h', sc2;
     // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
     // CHECK-FIXES: {{^    }}signed char sc1 = 'h';
