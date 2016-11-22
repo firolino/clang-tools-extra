@@ -12,6 +12,7 @@
 
 #include "clang/AST/ASTContext.h"
 #include "clang/Lex/Lexer.h"
+#include <vector>
 
 namespace clang {
 namespace tidy {
@@ -22,6 +23,15 @@ namespace lexer {
 /// ``tok::unknown`` if not found.
 Token getPreviousNonCommentToken(const ASTContext &Context,
                                  SourceLocation Location);
+
+/// \brief \arg Loc is the end of a statement range. This returns the location immediately
+/// after one of the token given in tokens is found after the statement.
+/// If non of the tokens are found, the returned source location will be
+/// invalid.
+SourceLocation findTokenAfterLocation(SourceLocation Loc, ASTContext &Ctx,
+                                          bool IsDecl,
+                                          std::vector<tok::TokenKind> tokens);
+
 
 } // namespace lexer
 } // namespace utils

@@ -35,6 +35,46 @@ Token getPreviousNonCommentToken(const ASTContext &Context,
   return Token;
 }
 
+SourceLocation findTokenAfterLocation(SourceLocation Loc, ASTContext &Ctx,
+                                      bool IsDecl,
+                                      std::vector<tok::TokenKind> tokens) {
+  const auto &SM = Ctx.getSourceManager();
+
+  if (Loc.isMacroID()) {
+    if (!Lexer::isAtEndOfMacroExpansion(Loc, SM, Ctx.getLangOpts(), &Loc))
+      return SourceLocation();
+  }
+  Loc = Lexer::getLocForEndOfToken(Loc, /*Offset=*/0, SM, Ctx.getLangOpts());
+
+  // Break down the source location.
+  std::pair<FileID, unsigned> locInfo = SM.getDecomposedLoc(Loc);
+
+  // Try to load the file buffer.
+  bool invalidTemp = false;
+  StringRef file = SM.getBufferData(locInfo.first, &invalidTemp);
+  if (invalidTemp)
+    return SourceLocation();
+
+  const char *tokenBegin = file.data() + locInfo.second;
+
+  // Lex from the startSearch of the given location.
+  Lexer lexer(SM.getLocForStartOfFile(locInfo.first), Ctx.getLangOpts(),
+              file.begin(), tokenBegin, file.end());
+  Token tok;
+  lexer.LexFromRawLexer(tok);
+  for (auto token : tokens) {
+    if (tok.is(token))
+      return tok.getLocation();
+  }
+
+  if (!IsDecl)
+    return SourceLocation();
+  // Declaration may be followed with other tokens; such as an __attribute,
+  // before ending with a semicolon.
+  return findTokenAfterLocation(tok.getLocation(), Ctx, /*IsDecl*/ true,
+                                tokens);
+}
+
 } // namespace lexer
 } // namespace utils
 } // namespace tidy
