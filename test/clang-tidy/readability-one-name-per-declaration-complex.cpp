@@ -54,12 +54,12 @@ void complex()
         // CHECK-FIXES: {{^        }}int localFor2 = 2;
     }
     
-    int v1, v2(3), v3, v4(4), v5{2}, v6 = {3};
+    int v1, v2(3), v3, v4(4 ), v5{2}, v6 = {3};
     // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
     // CHECK-FIXES: {{^    }}int v1;
-    // CHECK-FIXES: {{^    }}int v2(3;
+    // CHECK-FIXES: {{^    }}int v2(3);
     // CHECK-FIXES: {{^    }}int v3;
-    // CHECK-FIXES: {{^    }}int v4(4;
+    // CHECK-FIXES: {{^    }}int v4(4 );
     // CHECK-FIXES: {{^    }}int v5{2};
     // CHECK-FIXES: {{^    }}int v6 = {3};
     
@@ -89,9 +89,9 @@ void complex()
         {
             void gg(int, float);
             
-            void (*f2)(int), (*g2)(int, float) = gg;
+            void ( *f2)(int), (*g2)(int, float) = gg;
             // CHECK-MESSAGES: :[[@LINE-1]]:13: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
-            // CHECK-FIXES: {{^            }}void (*f2)(int);
+            // CHECK-FIXES: {{^            }}void ( *f2)(int);
             // CHECK-FIXES: {{^            }}void (*g2)(int, float) = gg;
             
         }
@@ -130,11 +130,11 @@ void complex()
     // CHECK-MESSAGES: :[[@LINE-7]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
     // CHECK-FIXES: {{^    }}int intfunction = returner();
     // CHECK-FIXES: {{^    }}int intarray[] =
-    // CHECK-FIXES: {{^              }}{
-    // CHECK-FIXES: {{^                      }}1,
-    // CHECK-FIXES: {{^                      }}2,
-    // CHECK-FIXES: {{^                      }}3,
-    // CHECK-FIXES: {{^                      }}4
-    // CHECK-FIXES: {{^              }}};
+    // CHECK-FIXES: {{^          }}{
+    // CHECK-FIXES: {{^                  }}1,
+    // CHECK-FIXES: {{^                  }}2,
+    // CHECK-FIXES: {{^                  }}3,
+    // CHECK-FIXES: {{^                  }}4
+    // CHECK-FIXES: {{^          }}};
     // CHECK-FIXES: {{^    }}int bb = 4;
 }

@@ -76,7 +76,7 @@ void simple()
                *literal2 = "empty", literal3[] = "three";
     // CHECK-MESSAGES: :[[@LINE-3]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
     // CHECK-FIXES: {{^    }}const char *literal1 = "clang"		"test" \
-    // CHECK-FIXES: {{^                               }}"one";
+    // CHECK-FIXES: {{^                           }}"one";
     // CHECK-FIXES: {{^    }}const char *literal2 = "empty";
     // CHECK-FIXES: {{^    }}const char literal3[] = "three";
     
@@ -89,12 +89,12 @@ void simple()
           }, bb = 5;
     // CHECK-MESSAGES: :[[@LINE-7]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
     // CHECK-FIXES: {{^    }}int intarray[] =
-    // CHECK-FIXES: {{^    }}          {
-    // CHECK-FIXES: {{^    }}           			1,
-    // CHECK-FIXES: {{^    }}                    2,
-    // CHECK-FIXES: {{^    }}                    3,
-    // CHECK-FIXES: {{^    }}                    4
-    // CHECK-FIXES: {{^    }}          };
+    // CHECK-FIXES: {{^    }}      {
+    // CHECK-FIXES: {{^    }}       			1,
+    // CHECK-FIXES: {{^    }}                2,
+    // CHECK-FIXES: {{^    }}                3,
+    // CHECK-FIXES: {{^    }}                4
+    // CHECK-FIXES: {{^    }}      };
     // CHECK-FIXES: {{^    }}int bb = 5;
     
     const int cint3 = 4, cintarray[] = { 1, 2, 3, 4 };

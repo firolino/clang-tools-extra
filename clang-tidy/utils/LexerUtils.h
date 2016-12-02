@@ -28,9 +28,9 @@ Token getPreviousNonCommentToken(const ASTContext &Context,
 /// after one of the token given in tokens is found after the statement.
 /// If non of the tokens are found, the returned source location will be
 /// invalid.
-SourceLocation findTokenAfterLocation(SourceLocation Loc, ASTContext &Ctx,
-                                          bool IsDecl,
-                                          std::vector<tok::TokenKind> tokens);
+SourceLocation findTokenAfterLocation(SourceLocation Loc, ASTContext &Context,
+                                      bool IsDecl,
+                                      const std::vector<tok::TokenKind> &Tokens);
 
 
 } // namespace lexer

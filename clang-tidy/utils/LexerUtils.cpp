@@ -35,44 +35,44 @@ Token getPreviousNonCommentToken(const ASTContext &Context,
   return Token;
 }
 
-SourceLocation findTokenAfterLocation(SourceLocation Loc, ASTContext &Ctx,
+SourceLocation findTokenAfterLocation(SourceLocation Loc, ASTContext &Context,
                                       bool IsDecl,
-                                      std::vector<tok::TokenKind> tokens) {
-  const auto &SM = Ctx.getSourceManager();
+                                      const std::vector<tok::TokenKind> &Tokens) {
+  const auto &SM = Context.getSourceManager();
 
   if (Loc.isMacroID()) {
-    if (!Lexer::isAtEndOfMacroExpansion(Loc, SM, Ctx.getLangOpts(), &Loc))
+    if (!Lexer::isAtEndOfMacroExpansion(Loc, SM, Context.getLangOpts(), &Loc))
       return SourceLocation();
   }
-  Loc = Lexer::getLocForEndOfToken(Loc, /*Offset=*/0, SM, Ctx.getLangOpts());
+  Loc = Lexer::getLocForEndOfToken(Loc, /*Offset=*/0, SM, Context.getLangOpts());
 
   // Break down the source location.
-  std::pair<FileID, unsigned> locInfo = SM.getDecomposedLoc(Loc);
+  std::pair<FileID, unsigned> LocInfo = SM.getDecomposedLoc(Loc);
 
   // Try to load the file buffer.
-  bool invalidTemp = false;
-  StringRef file = SM.getBufferData(locInfo.first, &invalidTemp);
-  if (invalidTemp)
+  bool InvalidTemp = false;
+  StringRef file = SM.getBufferData(LocInfo.first, &InvalidTemp);
+  if (InvalidTemp)
     return SourceLocation();
 
-  const char *tokenBegin = file.data() + locInfo.second;
+  const char *TokenBegin = file.data() + LocInfo.second;
 
   // Lex from the startSearch of the given location.
-  Lexer lexer(SM.getLocForStartOfFile(locInfo.first), Ctx.getLangOpts(),
-              file.begin(), tokenBegin, file.end());
-  Token tok;
-  lexer.LexFromRawLexer(tok);
-  for (auto token : tokens) {
-    if (tok.is(token))
-      return tok.getLocation();
+  Lexer Lexer(SM.getLocForStartOfFile(LocInfo.first), Context.getLangOpts(),
+              file.begin(), TokenBegin, file.end());
+  Token Tok;
+  Lexer.LexFromRawLexer(Tok);
+  for (auto token : Tokens) {
+    if (Tok.is(token))
+      return Tok.getLocation();
   }
 
   if (!IsDecl)
     return SourceLocation();
-  // Declaration may be followed with other tokens; such as an __attribute,
+  // Declaration may be followed with other Tokens; such as an __attribute,
   // before ending with a semicolon.
-  return findTokenAfterLocation(tok.getLocation(), Ctx, /*IsDecl*/ true,
-                                tokens);
+  return findTokenAfterLocation(Tok.getLocation(), Context, /*IsDecl*/ true,
+                                Tokens);
 }
 
 } // namespace lexer
