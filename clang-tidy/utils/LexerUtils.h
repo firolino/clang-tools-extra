@@ -24,14 +24,14 @@ namespace lexer {
 Token getPreviousNonCommentToken(const ASTContext &Context,
                                  SourceLocation Location);
 
-/// \brief \arg Loc is the end of a statement range. This returns the location immediately
+/// \brief \arg Loc is the end of a statement range. This returns the location
+/// immediately
 /// after one of the token given in tokens is found after the statement.
 /// If non of the tokens are found, the returned source location will be
 /// invalid.
-SourceLocation findTokenAfterLocation(SourceLocation Loc, ASTContext &Context,
-                                      bool IsDecl,
-                                      const std::vector<tok::TokenKind> &Tokens);
-
+SourceLocation findLocationAfterToken(SourceLocation Loc,
+                                      const std::vector<tok::TokenKind> &Tokens,
+                                      ASTContext &Context);
 
 } // namespace lexer
 } // namespace utils
