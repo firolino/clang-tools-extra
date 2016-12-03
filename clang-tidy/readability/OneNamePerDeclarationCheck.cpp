@@ -130,25 +130,32 @@ OneNamePerDeclarationCheck::getUserWrittenType(const clang::DeclStmt *DeclStmt,
   auto FirstVarIt = DeclStmt->getDeclGroup().begin();
   auto FirstVar = llvm::dyn_cast<const clang::DeclaratorDecl>(*FirstVarIt);
 
+
+
   assert(FirstVar != nullptr && "DeclStmt has no element!");
 
   SourceRange FVLoc(DeclStmt->getLocStart(), FirstVar->getLocation());
 
-  auto l = Lexer::getLocForEndOfToken(FirstVar->getTypeSourceInfo()
-                                          ->getTypeLoc()
-                                          .getUnqualifiedLoc()
-                                          .getLocEnd(),
-                                      -1, SM, getLangOpts());
-  llvm::outs() << "--:" << Lexer::getSourceText(CharSourceRange::getTokenRange(
-                                                    DeclStmt->getLocStart(), l),
-                                                SM, getLangOpts())
-               << "\n";
+  if(auto FFV = llvm::dyn_cast<const clang::VarDecl>(*FirstVarIt))
+  {
+    auto l = Lexer::getLocForEndOfToken(FFV->getTypeSourceInfo()->getTypeLoc().getLocEnd(),
+                                        0, SM, getLangOpts());
 
-  llvm::outs() << "--:" << Lexer::getSourceText(CharSourceRange::getCharRange(
-                                                    DeclStmt->getLocStart(), l),
-                                                SM, getLangOpts())
-               << "\n";
+    llvm::outs() << "0:" << Lexer::getSourceText(CharSourceRange::getTokenRange(
+            DeclStmt->getLocStart(), FFV->getTypeSourceInfo()->getTypeLoc().getLocEnd()),
+                                                 SM, getLangOpts())
+                 << "\n";
 
+    llvm::outs() << "1:" << Lexer::getSourceText(CharSourceRange::getTokenRange(
+            DeclStmt->getLocStart(), l),
+                                                 SM, getLangOpts())
+                 << "\n";
+
+    llvm::outs() << "2:" << Lexer::getSourceText(CharSourceRange::getCharRange(
+            DeclStmt->getLocStart(), l),
+                                                 SM, getLangOpts())
+                 << "\n";
+  }
   std::string FVStr = Lexer::getSourceText(
       CharSourceRange::getTokenRange(FVLoc), SM, getLangOpts());
 
