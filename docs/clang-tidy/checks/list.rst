@@ -18,6 +18,8 @@ Clang-Tidy Checks
    cert-err61-cpp (redirects to misc-throw-by-value-catch-by-reference) <cert-err61-cpp>
    cert-fio38-c (redirects to misc-non-copyable-objects) <cert-fio38-c>
    cert-flp30-c
+   cert-msc30-c (redirects to cert-msc50-cpp) <cert-msc30-c>
+   cert-msc50-cpp
    cert-oop11-cpp (redirects to misc-move-constructor-init) <cert-oop11-cpp>
    cppcoreguidelines-interfaces-global-init
    cppcoreguidelines-pro-bounds-array-to-pointer-decay
@@ -107,10 +109,12 @@ Clang-Tidy Checks
    modernize-shrink-to-fit
    modernize-use-auto
    modernize-use-bool-literals
-   modernize-use-default
    modernize-use-emplace
+   modernize-use-equals-default
+   modernize-use-equals-delete
    modernize-use-nullptr
    modernize-use-override
+   modernize-use-transparent-functors
    modernize-use-using
    mpi-buffer-deref
    mpi-type-mismatch
@@ -134,6 +138,7 @@ Clang-Tidy Checks
    readability-non-const-parameter
    readability-one-name-per-declaration
    readability-redundant-control-flow
+   readability-redundant-declaration
    readability-redundant-member-init
    readability-redundant-smartptr-get
    readability-redundant-string-cstr
