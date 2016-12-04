@@ -29,7 +29,7 @@ static std::string replaceAll(std::string Str, const std::string &From,
                               const std::string &To);
 
 void OneNamePerDeclarationCheck::registerMatchers(MatchFinder *Finder) {
-  Finder->addMatcher(declStmt(hasParent(compoundStmt())).bind("declstmt"),
+  Finder->addMatcher(declStmt(allOf(hasParent(compoundStmt()), unless(hasDescendant(recordDecl())))).bind("declstmt"),
                      this);
 }
 
@@ -43,6 +43,11 @@ void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
       SourceManager &SM = *Result.SourceManager;
       const LangOptions &LangOpts = getLangOpts();
 
+      /*llvm::outs() << ">>" << Lexer::getSourceText(CharSourceRange::getTokenRange(DeclStmt->getSourceRange()),
+                                                   SM, getLangOpts())
+                   << "\n";
+
+      DeclStmt->dump();*/
       std::string UserWrittenType = getUserWrittenType(DeclStmt, SM);
 
       std::string AllSingleDeclarations = "";
@@ -130,13 +135,11 @@ OneNamePerDeclarationCheck::getUserWrittenType(const clang::DeclStmt *DeclStmt,
   auto FirstVarIt = DeclStmt->getDeclGroup().begin();
   auto FirstVar = llvm::dyn_cast<const clang::DeclaratorDecl>(*FirstVarIt);
 
-
-
   assert(FirstVar != nullptr && "DeclStmt has no element!");
 
   SourceRange FVLoc(DeclStmt->getLocStart(), FirstVar->getLocation());
 
-  if(auto FFV = llvm::dyn_cast<const clang::VarDecl>(*FirstVarIt))
+  /*if(auto FFV = llvm::dyn_cast<const clang::VarDecl>(*FirstVarIt))
   {
     auto l = Lexer::getLocForEndOfToken(FFV->getTypeSourceInfo()->getTypeLoc().getLocEnd(),
                                         0, SM, getLangOpts());
@@ -155,7 +158,8 @@ OneNamePerDeclarationCheck::getUserWrittenType(const clang::DeclStmt *DeclStmt,
             DeclStmt->getLocStart(), l),
                                                  SM, getLangOpts())
                  << "\n";
-  }
+  }*/
+
   std::string FVStr = Lexer::getSourceText(
       CharSourceRange::getTokenRange(FVLoc), SM, getLangOpts());
 

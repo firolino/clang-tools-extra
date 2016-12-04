@@ -101,5 +101,10 @@ void simple()
     // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
     // CHECK-FIXES: {{^    }}const int cint3 = 4;
     // CHECK-FIXES: {{^    }}const int cintarray[] = { 1, 2, 3, 4 };
+
+    union {
+        int m1;
+        float m2;
+    } in, out;
     
 }
