@@ -80,3 +80,4 @@ void modern()
         // CHECK-FIXES: {{^        }}std::vector<std::string> bb = {"h", "a" };
     }
 }
+

@@ -107,4 +107,11 @@ void simple()
         float m2;
     } in, out;
     
+    int refme1;
+    int refme2 = 0;
+    const int &r1 = refme1, &r2 = refme2;
+    // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
+    // CHECK-FIXES: {{^    }}const int &r1 = refme1;
+    // CHECK-FIXES: {{^    }}const int &r2 = refme2;
 }
+

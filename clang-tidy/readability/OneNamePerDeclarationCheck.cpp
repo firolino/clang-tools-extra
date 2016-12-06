@@ -21,6 +21,8 @@ namespace clang {
 namespace tidy {
 namespace readability {
 
+const internal::VariadicDynCastAllOfMatcher<Decl, TagDecl> tagDecl;
+
 static bool isWhitespaceExceptNL(unsigned char c);
 static std::string keepIndentationAfterNewLine(std::string Str,
                                                SourceLocation Loc,
@@ -29,7 +31,9 @@ static std::string replaceAll(std::string Str, const std::string &From,
                               const std::string &To);
 
 void OneNamePerDeclarationCheck::registerMatchers(MatchFinder *Finder) {
-  Finder->addMatcher(declStmt(allOf(hasParent(compoundStmt()), unless(hasDescendant(recordDecl())))).bind("declstmt"),
+  Finder->addMatcher(declStmt(allOf(hasParent(compoundStmt()),
+                                    unless(hasDescendant(tagDecl()))))
+                         .bind("declstmt"),
                      this);
 }
 
@@ -38,16 +42,19 @@ void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
   if (const auto *DeclStmt =
           Result.Nodes.getNodeAs<clang::DeclStmt>("declstmt")) {
 
-    if (DeclStmt->isSingleDecl() == false) {
+    if (DeclStmt->isSingleDecl() == false &&
+        DeclStmt->getLocStart().isMacroID() == false) {
 
       SourceManager &SM = *Result.SourceManager;
       const LangOptions &LangOpts = getLangOpts();
 
-      /*llvm::outs() << ">>" << Lexer::getSourceText(CharSourceRange::getTokenRange(DeclStmt->getSourceRange()),
-                                                   SM, getLangOpts())
+      llvm::outs() << ">>"
+                   << Lexer::getSourceText(CharSourceRange::getTokenRange(
+                                               DeclStmt->getSourceRange()),
+                                           SM, getLangOpts())
                    << "\n";
 
-      DeclStmt->dump();*/
+      DeclStmt->dump();
       std::string UserWrittenType = getUserWrittenType(DeclStmt, SM);
 
       std::string AllSingleDeclarations = "";
@@ -66,11 +73,15 @@ void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
 
           VariableLocation.setEnd(DecDecl->getLocEnd());
 
-          auto VariableLocationStr =
+          std::string VariableLocationStr =
               Lexer::getSourceText(
                   CharSourceRange::getTokenRange(VariableLocation), SM,
                   LangOpts)
                   .trim();
+
+          if(VariableLocationStr[0] == '#') // check for pp directive
+            VariableLocationStr.insert(0, "\n");
+
           if (it == DeclStmt->getDeclGroup().begin())
             SingleDeclaration = VariableLocationStr;
           else
@@ -139,26 +150,31 @@ OneNamePerDeclarationCheck::getUserWrittenType(const clang::DeclStmt *DeclStmt,
 
   SourceRange FVLoc(DeclStmt->getLocStart(), FirstVar->getLocation());
 
-  /*if(auto FFV = llvm::dyn_cast<const clang::VarDecl>(*FirstVarIt))
-  {
-    auto l = Lexer::getLocForEndOfToken(FFV->getTypeSourceInfo()->getTypeLoc().getLocEnd(),
-                                        0, SM, getLangOpts());
+  if (auto FFV = llvm::dyn_cast<const clang::VarDecl>(*FirstVarIt)) {
+    auto l = Lexer::getLocForEndOfToken(
+        FFV->getTypeSourceInfo()->getTypeLoc().getLocEnd(), 0, SM,
+        getLangOpts());
 
-    llvm::outs() << "0:" << Lexer::getSourceText(CharSourceRange::getTokenRange(
-            DeclStmt->getLocStart(), FFV->getTypeSourceInfo()->getTypeLoc().getLocEnd()),
-                                                 SM, getLangOpts())
+    llvm::outs() << "0:"
+                 << Lexer::getSourceText(
+                        CharSourceRange::getTokenRange(
+                            DeclStmt->getLocStart(),
+                            FFV->getTypeSourceInfo()->getTypeLoc().getLocEnd()),
+                        SM, getLangOpts())
                  << "\n";
 
-    llvm::outs() << "1:" << Lexer::getSourceText(CharSourceRange::getTokenRange(
-            DeclStmt->getLocStart(), l),
-                                                 SM, getLangOpts())
+    llvm::outs() << "1:"
+                 << Lexer::getSourceText(CharSourceRange::getTokenRange(
+                                             DeclStmt->getLocStart(), l),
+                                         SM, getLangOpts())
                  << "\n";
 
-    llvm::outs() << "2:" << Lexer::getSourceText(CharSourceRange::getCharRange(
-            DeclStmt->getLocStart(), l),
-                                                 SM, getLangOpts())
+    llvm::outs() << "2:"
+                 << Lexer::getSourceText(CharSourceRange::getCharRange(
+                                             DeclStmt->getLocStart(), l),
+                                         SM, getLangOpts())
                  << "\n";
-  }*/
+  }
 
   std::string FVStr = Lexer::getSourceText(
       CharSourceRange::getTokenRange(FVLoc), SM, getLangOpts());
@@ -175,7 +191,21 @@ OneNamePerDeclarationCheck::getUserWrittenType(const clang::DeclStmt *DeclStmt,
       FVStr = StringRef(FVStr).trim();
     }
   } else if (Type->isPointerType() || Type->isArrayType()) {
+    llvm::outs() << "p---- pointertype\n";
     auto POS = FVStr.find_last_not_of('*');
+    if (POS != std::string::npos) { // might be hidden behind typedef etc.
+      FVStr.erase(POS + 1);
+      FVStr = StringRef(FVStr).trim();
+    }
+  }
+  else if (Type->isReferenceType()) {
+    llvm::outs() << "p---- referemcetype\n";
+    auto POS = FVStr.find_last_not_of('&');
+    if (POS != std::string::npos) { // might be hidden behind typedef etc.
+      FVStr.erase(POS + 1);
+      FVStr = StringRef(FVStr).trim();
+    }
+    POS = FVStr.find_last_not_of('*');
     if (POS != std::string::npos) { // might be hidden behind typedef etc.
       FVStr.erase(POS + 1);
       FVStr = StringRef(FVStr).trim();

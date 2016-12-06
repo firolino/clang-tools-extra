@@ -22,6 +22,17 @@ struct StructOne
     int cantTouch1, cantTouch2;
 };
 
+using PointerType = int;
+
+struct TemT
+{
+    template<typename T>
+    T* getAs()
+    {
+        return nullptr;
+    }
+} TT1, TT2;
+
 void complex() 
 {
     typedef int* IntPtr;
@@ -137,4 +148,39 @@ void complex()
     // CHECK-FIXES: {{^                  }}4
     // CHECK-FIXES: {{^          }}};
     // CHECK-FIXES: {{^    }}int bb = 4;
+    
+    TemT *T1 = &TT1, *T2 = &TT2;
+    // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
+    // CHECK-FIXES: {{^    }}TemT *T1 = &TT1;
+    // CHECK-FIXES: {{^    }}TemT *T2 = &TT2;
+
+    const PointerType *PT1 = T1->getAs<PointerType>(),
+                      *PT2 = T2->getAs<PointerType>();
+    // CHECK-MESSAGES: :[[@LINE-2]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
+    // CHECK-FIXES: {{^    }}const PointerType *PT1 = T1->getAs<PointerType>();
+    // CHECK-FIXES: {{^    }}const PointerType *PT2 = T2->getAs<PointerType>();
+    
+    bool defPre = false,
+#ifdef IS_ENABLED
+       defTest = false;
+#else
+       defTest = true;
+#endif
+    // CHECK-MESSAGES: :[[@LINE-6]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
+    // CHECK-FIXES: {{^    }}bool defPre = false;
+    // CHECK-FIXES: {{^    }}bool 
+    // CHECK-FIXES: #ifdef IS_ENABLED
+    // CHECK-FIXES: {{^       }}defTest = false;
+    // CHECK-FIXES: #else
+    // CHECK-FIXES: {{^       }}defTest = true;
+    // CHECK-FIXES: #endif
+    
+    const int *p1 = nullptr;
+    const int *p2 = nullptr;
+    
+    const int *&pref1 = p1, *&pref2 = p2;
+    // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
+    // CHECK-FIXES: {{^    }}const int *&pref1 = p1;
+    // CHECK-FIXES: {{^    }}const int *&pref2 = p2;
 }
+
