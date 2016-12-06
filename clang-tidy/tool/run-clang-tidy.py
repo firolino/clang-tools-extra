@@ -98,7 +98,10 @@ def run_tidy(args, tmpdir, build_path, queue):
     invocation = get_tidy_invocation(name, args.clang_tidy_binary, args.checks,
                                      tmpdir, build_path, args.header_filter)
     sys.stdout.write(' '.join(invocation) + '\n')
-    subprocess.call(invocation)
+    ret = subprocess.call(invocation)
+    if ret != 0:
+       print "failed (" + str(ret) + "): "  + str(name)
+       os.kill(0,9)
     queue.task_done()
 
 
