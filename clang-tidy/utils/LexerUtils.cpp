@@ -41,8 +41,9 @@ SourceLocation findLocationAfterToken(SourceLocation Loc,
   const auto &SM = Context.getSourceManager();
   const auto &LO = Context.getLangOpts();
 
-  for (auto token : Tokens) {
-    auto FLoc = Lexer::findLocationAfterToken(Loc, token, SM, LO, true);
+  for (auto Token : Tokens) {
+    auto FLoc = Lexer::findLocationAfterToken(
+        Loc, Token, SM, LO, /*SkipTrailingWhitespaceAndNewLine*/ true);
 
     if (FLoc.isValid())
       return FLoc;

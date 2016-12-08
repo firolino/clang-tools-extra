@@ -24,10 +24,15 @@ namespace readability {
 const internal::VariadicDynCastAllOfMatcher<Decl, TagDecl> tagDecl;
 
 static bool isWhitespaceExceptNL(unsigned char c);
-static std::string getCurrentIndent(SourceLocation Loc,
-                                    const SourceManager &SM);
+static std::string getCurrentLineIndent(SourceLocation Loc,
+                                        const SourceManager &SM);
 
 void OneNamePerDeclarationCheck::registerMatchers(MatchFinder *Finder) {
+
+  // Matches all declaration within a compound statement {...}.
+  // Unless, the variable declaration is a object definition directly after
+  // a tag declaration (e.g. struct, class etc.):
+  // class A { } Object1, Object2;  <-- won't be matched
   Finder->addMatcher(declStmt(allOf(hasParent(compoundStmt()),
                                     unless(hasDescendant(tagDecl()))))
                          .bind("declstmt"),
@@ -38,6 +43,7 @@ void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
   if (const auto *DeclStmt =
           Result.Nodes.getNodeAs<clang::DeclStmt>("declstmt")) {
 
+    // Single declarations and macros will be ignored
     if (DeclStmt->isSingleDecl() == false &&
         DeclStmt->getLocStart().isMacroID() == false) {
 
@@ -45,76 +51,87 @@ void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
       const LangOptions &LangOpts = getLangOpts();
 
       const std::string CurrentIndent =
-          getCurrentIndent(DeclStmt->getLocStart(), SM);
+              getCurrentLineIndent(DeclStmt->getLocStart(), SM);
       std::string UserWrittenType = getUserWrittenType(DeclStmt, SM);
 
       std::string AllSingleDeclarations = "";
       SourceRange VariableLocation;
 
+      // We will iterate through the declaration group and split it into
+      // single declarations. For example:
+      // int *p, q = 2, v;
+      // - UserWrittenType will be int
+      // - Fist iteration will cut-off 'int *p' and set locations accordingly
+      // - Next iteration will start after the comma and so cut-off 'q = 2'
+      //     - 'UserWrittenType q = 2' will be saved
+      // - Next iteration will cut-off v
+      //     - 'UserWrittenType v' will be saved
+      // - and so on...
       for (auto it = DeclStmt->getDeclGroup().begin();
            it != DeclStmt->getDeclGroup().end(); ++it) {
 
         std::string SingleDeclaration = UserWrittenType + " ";
 
-        if (const clang::DeclaratorDecl *DecDecl =
-                llvm::dyn_cast<const clang::DeclaratorDecl>(*it)) {
+        const clang::DeclaratorDecl *DecDecl =
+            llvm::dyn_cast<const clang::DeclaratorDecl>(*it);
+        if (DecDecl == nullptr)
+          continue;
 
-          if (it == DeclStmt->getDeclGroup().begin())
-            VariableLocation.setBegin(DeclStmt->getLocStart());
+        if (it == DeclStmt->getDeclGroup().begin())
+          VariableLocation.setBegin(DeclStmt->getLocStart());
 
-          VariableLocation.setEnd(DecDecl->getLocEnd());
+        VariableLocation.setEnd(DecDecl->getLocEnd());
 
-          std::string VariableLocationStr =
-              Lexer::getSourceText(
-                  CharSourceRange::getTokenRange(VariableLocation), SM,
-                  LangOpts)
-                  .trim();
+        std::string VariableLocationStr =
+            Lexer::getSourceText(
+                CharSourceRange::getTokenRange(VariableLocation), SM, LangOpts)
+                .trim();
 
-          // check for pre processor directive
-          if (VariableLocationStr[0] == '#')
-            VariableLocationStr.insert(0, "\n");
+        // Check for pre-processor directive and add appropriate newline
+        if (VariableLocationStr[0] == '#')
+          VariableLocationStr.insert(0, "\n");
 
-          if (it == DeclStmt->getDeclGroup().begin())
-            SingleDeclaration = VariableLocationStr;
-          else
-            SingleDeclaration += VariableLocationStr;
+        if (it == DeclStmt->getDeclGroup().begin())
+          SingleDeclaration = VariableLocationStr;
+        else
+          SingleDeclaration += VariableLocationStr;
 
-          // workaround for
-          // http://lists.llvm.org/pipermail/cfe-dev/2016-November/051425.html
-          if (const clang::VarDecl *VarDecl =
-                  llvm::dyn_cast<const clang::VarDecl>(*it)) {
+        // Workaround for
+        // http://lists.llvm.org/pipermail/cfe-dev/2016-November/051425.html
+        if (const clang::VarDecl *VarDecl =
+                llvm::dyn_cast<const clang::VarDecl>(*it)) {
 
-            if (VarDecl->getType().getCanonicalType()->isScalarType() &&
-                VarDecl->hasInit() &&
-                VarDecl->getInitStyle() == clang::VarDecl::CallInit) {
+          if (VarDecl->getType().getCanonicalType()->isScalarType() &&
+              VarDecl->hasInit() &&
+              VarDecl->getInitStyle() == clang::VarDecl::CallInit) {
 
-              auto PP = Lexer::findLocationAfterToken(VariableLocation.getEnd(),
-                                                      tok::r_paren, SM,
-                                                      LangOpts, true)
-                            .getLocWithOffset(-1);
+            auto PP =
+                Lexer::findLocationAfterToken(VariableLocation.getEnd(),
+                                              tok::r_paren, SM, LangOpts, true)
+                    .getLocWithOffset(-1);
 
-              std::string Appendee = Lexer::getSourceText(
-                  CharSourceRange::getTokenRange(
-                      VariableLocation.getEnd().getLocWithOffset(1), PP),
-                  SM, LangOpts);
+            std::string Appendee = Lexer::getSourceText(
+                CharSourceRange::getTokenRange(
+                    VariableLocation.getEnd().getLocWithOffset(1), PP),
+                SM, LangOpts);
 
-              SingleDeclaration += Appendee;
-              VariableLocation.setEnd(
-                  VariableLocation.getEnd().getLocWithOffset(Appendee.size()));
-            }
+            SingleDeclaration += Appendee;
+            VariableLocation.setEnd(
+                VariableLocation.getEnd().getLocWithOffset(Appendee.size()));
           }
-
-          AllSingleDeclarations += SingleDeclaration + ";\n" + CurrentIndent;
-
-          const std::vector<tok::TokenKind> tokens = {tok::semi, tok::comma};
-          VariableLocation.setBegin(tidy::utils::lexer::findLocationAfterToken(
-              VariableLocation.getEnd(), tokens, *Result.Context));
         }
+
+        AllSingleDeclarations += SingleDeclaration + ";\n" + CurrentIndent;
+
+        // Lookout for next location start
+        const std::vector<tok::TokenKind> tokens = {tok::semi, tok::comma};
+        VariableLocation.setBegin(tidy::utils::lexer::findLocationAfterToken(
+            VariableLocation.getEnd(), tokens, *Result.Context));
       }
 
       if (AllSingleDeclarations.empty() == false) {
 
-        // remove last indent and '\n'
+        // Remove last indent and '\n'
         AllSingleDeclarations = StringRef(AllSingleDeclarations).rtrim();
 
         auto Diag = diag(DeclStmt->getSourceRange().getBegin(),
@@ -141,32 +158,37 @@ OneNamePerDeclarationCheck::getUserWrittenType(const clang::DeclStmt *DeclStmt,
       CharSourceRange::getTokenRange(FVLoc), SM, getLangOpts());
 
   FVStr.erase(FVStr.size() - FirstVar->getName().size()); // remove var name
-  FVStr = StringRef(FVStr).trim();
+  std::string UserWrittenType = StringRef(FVStr).trim();
 
   auto Type = FirstVar->getType();
 
+  // UserWrittenType might be and we want ->
+  // const int S::* -> const int
+  // const int *&   -> const int
+  // long **        -> long int
+
   if (Type->isFunctionPointerType()) {
-    auto Pos = FVStr.find('(');
+    auto Pos = UserWrittenType.find('(');
     if (Pos != std::string::npos) { // might be hidden behind typedef etc.
-      FVStr.erase(Pos);
-      FVStr = StringRef(FVStr).trim();
+      UserWrittenType.erase(Pos);
+      UserWrittenType = StringRef(UserWrittenType).trim();
     }
 
-    return FVStr;
+    return UserWrittenType;
   }
 
   if (Type->isPointerType() || Type->isArrayType() || Type->isReferenceType()) {
-    auto Pos = FVStr.find_last_not_of("&*");
+    auto Pos = UserWrittenType.find_last_not_of("&*");
     if (Pos != std::string::npos) { // might be hidden behind typedef etc.
-      FVStr.erase(Pos + 1);
-      FVStr = StringRef(FVStr).trim();
+      UserWrittenType.erase(Pos + 1);
+      UserWrittenType = StringRef(UserWrittenType).trim();
     }
 
-    return FVStr;
+    return UserWrittenType;
   }
 
   if (const MemberPointerType *T = Type->getAs<MemberPointerType>()) {
-    auto Pos = FVStr.find("::");
+    auto Pos = UserWrittenType.find("::");
     if (Pos != std::string::npos) { // might be hidden behind typedef etc.
 
       StringRef CN = T->getClass()->getCanonicalTypeInternal().getAsString();
@@ -174,14 +196,14 @@ OneNamePerDeclarationCheck::getUserWrittenType(const clang::DeclStmt *DeclStmt,
       // CN will be 'struct/class Typename'. we are only interested in the
       // second part
       CN = CN.split(' ').second;
-      Pos = FVStr.rfind(CN, Pos);
+      Pos = UserWrittenType.rfind(CN, Pos);
 
-      FVStr.erase(Pos);
-      FVStr = StringRef(FVStr).trim();
+      UserWrittenType.erase(Pos);
+      UserWrittenType = StringRef(UserWrittenType).trim();
     }
   }
 
-  return FVStr;
+  return UserWrittenType;
 }
 
 static bool isWhitespaceExceptNL(unsigned char c) {
@@ -197,8 +219,8 @@ static bool isWhitespaceExceptNL(unsigned char c) {
   }
 }
 
-static std::string getCurrentIndent(SourceLocation Loc,
-                                    const SourceManager &SM) {
+static std::string getCurrentLineIndent(SourceLocation Loc,
+                                        const SourceManager &SM) {
   auto V = SM.getDecomposedLoc(Loc);
   FileID FID = V.first;
   unsigned StartOffs = V.second;
@@ -210,7 +232,7 @@ static std::string getCurrentIndent(SourceLocation Loc,
       SM.getSLocEntry(FID).getFile().getContentCache();
   unsigned LineOffs = Content->SourceLineCache[LineNo];
 
-  // find the whitespace at the start of the line.
+  // Find the whitespace at the start of the line.
   StringRef IndentSpace;
   {
     size_t i = LineOffs;
