@@ -40,110 +40,109 @@ void OneNamePerDeclarationCheck::registerMatchers(MatchFinder *Finder) {
 }
 
 void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
-  if (const auto *DeclStmt =
-          Result.Nodes.getNodeAs<clang::DeclStmt>("declstmt")) {
+  const auto *DeclStmt = Result.Nodes.getNodeAs<clang::DeclStmt>("declstmt");
+  if (DeclStmt == nullptr)
+    return;
 
-    // Single declarations and macros will be ignored
-    if (DeclStmt->isSingleDecl() == false &&
-        DeclStmt->getLocStart().isMacroID() == false) {
+  // Single declarations and macros will be ignored
+  if (DeclStmt->isSingleDecl() || DeclStmt->getLocStart().isMacroID())
+    return;
 
-      SourceManager &SM = *Result.SourceManager;
-      const LangOptions &LangOpts = getLangOpts();
+  SourceManager &SM = *Result.SourceManager;
+  const LangOptions &LangOpts = getLangOpts();
 
-      const std::string CurrentIndent =
-          getCurrentLineIndent(DeclStmt->getLocStart(), SM);
-      std::string UserWrittenType = getUserWrittenType(DeclStmt, SM);
+  const std::string CurrentIndent =
+      getCurrentLineIndent(DeclStmt->getLocStart(), SM);
+  const std::string UserWrittenType = getUserWrittenType(DeclStmt, SM);
 
-      std::string AllSingleDeclarations = "";
-      SourceRange VariableLocation;
+  std::string AllSingleDeclarations = "";
+  SourceRange VariableLocation;
 
-      // We will iterate through the declaration group and split it into
-      // single declarations. For example:
-      // int *p, q = 2, v;
-      // - UserWrittenType will be int
-      // - Fist iteration will cut-off 'int *p' and set locations accordingly
-      // - Next iteration will start after the comma and so cut-off 'q = 2'
-      //     - 'UserWrittenType q = 2' will be saved
-      // - Next iteration will cut-off v
-      //     - 'UserWrittenType v' will be saved
-      // - and so on...
-      for (auto it = DeclStmt->getDeclGroup().begin();
-           it != DeclStmt->getDeclGroup().end(); ++it) {
+  // We will iterate through the declaration group and split it into
+  // single declarations. For example:
+  // int *p, q = 2, v;
+  // - UserWrittenType will be int
+  // - Fist iteration will cut-off 'int *p' and set locations accordingly
+  // - Next iteration will start after the comma and so cut-off 'q = 2'
+  //     - 'UserWrittenType q = 2' will be saved
+  // - Next iteration will cut-off v
+  //     - 'UserWrittenType v' will be saved
+  // - and so on...
+  for (auto it = DeclStmt->getDeclGroup().begin();
+       it != DeclStmt->getDeclGroup().end(); ++it) {
 
-        std::string SingleDeclaration = UserWrittenType + " ";
+    std::string SingleDeclaration = UserWrittenType + " ";
 
-        if (const clang::DeclaratorDecl *DecDecl =
-                llvm::dyn_cast<const clang::DeclaratorDecl>(*it))
-          VariableLocation.setEnd(DecDecl->getLocEnd());
-        else if (const clang::TypedefDecl *TypeDecl =
-                     llvm::dyn_cast<const clang::TypedefDecl>(*it))
-          VariableLocation.setEnd(TypeDecl->getLocEnd());
-        else
-          llvm_unreachable(
-              "Declaration is neither a DeclaratorDecl nor a TypedefDecl");
+    if (const clang::DeclaratorDecl *DecDecl =
+            llvm::dyn_cast<const clang::DeclaratorDecl>(*it))
+      VariableLocation.setEnd(DecDecl->getLocEnd());
+    else if (const clang::TypedefDecl *TypeDecl =
+                 llvm::dyn_cast<const clang::TypedefDecl>(*it))
+      VariableLocation.setEnd(TypeDecl->getLocEnd());
+    else
+      llvm_unreachable(
+          "Declaration is neither a DeclaratorDecl nor a TypedefDecl");
 
-        if (it == DeclStmt->getDeclGroup().begin())
-          VariableLocation.setBegin(DeclStmt->getLocStart());
+    if (it == DeclStmt->getDeclGroup().begin())
+      VariableLocation.setBegin(DeclStmt->getLocStart());
 
-        std::string VariableLocationStr =
-            Lexer::getSourceText(
-                CharSourceRange::getTokenRange(VariableLocation), SM, LangOpts)
-                .trim();
+    std::string VariableLocationStr =
+        Lexer::getSourceText(CharSourceRange::getTokenRange(VariableLocation),
+                             SM, LangOpts)
+            .trim();
 
-        // Check for pre-processor directive and add appropriate newline
-        if (VariableLocationStr[0] == '#')
-          VariableLocationStr.insert(0, "\n");
+    // Check for pre-processor directive and add appropriate newline
+    if (VariableLocationStr[0] == '#')
+      VariableLocationStr.insert(0, "\n");
 
-        if (it == DeclStmt->getDeclGroup().begin())
-          SingleDeclaration = VariableLocationStr;
-        else
-          SingleDeclaration += VariableLocationStr;
+    if (it == DeclStmt->getDeclGroup().begin())
+      SingleDeclaration = VariableLocationStr;
+    else
+      SingleDeclaration += VariableLocationStr;
 
-        // Workaround for
-        // http://lists.llvm.org/pipermail/cfe-dev/2016-November/051425.html
-        if (const clang::VarDecl *VarDecl =
-                llvm::dyn_cast<const clang::VarDecl>(*it)) {
+    // Workaround for
+    // http://lists.llvm.org/pipermail/cfe-dev/2016-November/051425.html
+    if (const clang::VarDecl *VarDecl =
+            llvm::dyn_cast<const clang::VarDecl>(*it)) {
 
-          if (VarDecl->getType().getCanonicalType()->isScalarType() &&
-              VarDecl->hasInit() &&
-              VarDecl->getInitStyle() == clang::VarDecl::CallInit) {
+      if (VarDecl->getType().getCanonicalType()->isScalarType() &&
+          VarDecl->hasInit() &&
+          VarDecl->getInitStyle() == clang::VarDecl::CallInit) {
 
-            auto PP =
-                Lexer::findLocationAfterToken(VariableLocation.getEnd(),
-                                              tok::r_paren, SM, LangOpts, true)
-                    .getLocWithOffset(-1);
+        auto PP =
+            Lexer::findLocationAfterToken(VariableLocation.getEnd(),
+                                          tok::r_paren, SM, LangOpts, true)
+                .getLocWithOffset(-1);
 
-            std::string Appendee = Lexer::getSourceText(
-                CharSourceRange::getTokenRange(
-                    VariableLocation.getEnd().getLocWithOffset(1), PP),
-                SM, LangOpts);
+        const std::string Appendee = Lexer::getSourceText(
+            CharSourceRange::getTokenRange(
+                VariableLocation.getEnd().getLocWithOffset(1), PP),
+            SM, LangOpts);
 
-            SingleDeclaration += Appendee;
-            VariableLocation.setEnd(
-                VariableLocation.getEnd().getLocWithOffset(Appendee.size()));
-          }
-        }
-
-        AllSingleDeclarations += SingleDeclaration + ";\n" + CurrentIndent;
-
-        // Lookout for next location start
-        const std::vector<tok::TokenKind> tokens = {tok::semi, tok::comma};
-        VariableLocation.setBegin(tidy::utils::lexer::findLocationAfterToken(
-            VariableLocation.getEnd(), tokens, *Result.Context));
-      }
-
-      if (AllSingleDeclarations.empty() == false) {
-
-        // Remove last indent and '\n'
-        AllSingleDeclarations = StringRef(AllSingleDeclarations).rtrim();
-
-        auto Diag = diag(DeclStmt->getSourceRange().getBegin(),
-                         "declaration statement can be split up into single "
-                         "line declarations");
-        Diag << FixItHint::CreateReplacement(DeclStmt->getSourceRange(),
-                                             AllSingleDeclarations);
+        SingleDeclaration += Appendee;
+        VariableLocation.setEnd(
+            VariableLocation.getEnd().getLocWithOffset(Appendee.size()));
       }
     }
+
+    AllSingleDeclarations += SingleDeclaration + ";\n" + CurrentIndent;
+
+    // Lookout for next location start
+    const std::vector<tok::TokenKind> tokens = {tok::semi, tok::comma};
+    VariableLocation.setBegin(tidy::utils::lexer::findLocationAfterToken(
+        VariableLocation.getEnd(), tokens, *Result.Context));
+  }
+
+  if (AllSingleDeclarations.empty() == false) {
+
+    // Remove last indent and '\n'
+    AllSingleDeclarations = StringRef(AllSingleDeclarations).rtrim();
+
+    auto Diag = diag(DeclStmt->getSourceRange().getBegin(),
+                     "declaration statement can be split up into single "
+                     "line declarations");
+    Diag << FixItHint::CreateReplacement(DeclStmt->getSourceRange(),
+                                         AllSingleDeclarations);
   }
 }
 
@@ -156,12 +155,12 @@ OneNamePerDeclarationCheck::getUserWrittenType(const clang::DeclStmt *DeclStmt,
   size_t NameSize = 0;
   QualType Type;
 
-  if (auto FirstVar =
+  if (const auto FirstVar =
           llvm::dyn_cast<const clang::DeclaratorDecl>(*FirstVarIt)) {
     Location = FirstVar->getLocation();
     NameSize = FirstVar->getName().size();
     Type = FirstVar->getType();
-  } else if (auto FirstVar =
+  } else if (const auto FirstVar =
                  llvm::dyn_cast<const clang::TypedefDecl>(*FirstVarIt)) {
     Location = FirstVar->getLocation();
     NameSize = FirstVar->getName().size();
@@ -240,16 +239,16 @@ static bool isWhitespaceExceptNL(unsigned char c) {
 
 static std::string getCurrentLineIndent(SourceLocation Loc,
                                         const SourceManager &SM) {
-  auto V = SM.getDecomposedLoc(Loc);
-  FileID FID = V.first;
-  unsigned StartOffs = V.second;
+  const auto V = SM.getDecomposedLoc(Loc);
+  const FileID FID = V.first;
+  const unsigned StartOffs = V.second;
 
-  StringRef MB = SM.getBufferData(FID);
+  const StringRef MB = SM.getBufferData(FID);
 
-  unsigned LineNo = SM.getLineNumber(FID, StartOffs) - 1;
+  const unsigned LineNo = SM.getLineNumber(FID, StartOffs) - 1;
   const SrcMgr::ContentCache *Content =
       SM.getSLocEntry(FID).getFile().getContentCache();
-  unsigned LineOffs = Content->SourceLineCache[LineNo];
+  const unsigned LineOffs = Content->SourceLineCache[LineNo];
 
   // Find the whitespace at the start of the line.
   StringRef IndentSpace;

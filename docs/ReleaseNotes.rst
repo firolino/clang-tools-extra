@@ -136,6 +136,11 @@ Improvements to clang-tidy
   Flags function parameters of a pointer type that could be changed to point to
   a constant type instead.
 
+- New `readability-one-name-per-declaration
+  <http://clang.llvm.org/extra/clang-tidy/checks/readability-one-name-per-declaration.html>`_ check
+
+  Finds declarations declaring more that one name.
+
 - New `readability-redundant-declaration
   <http://clang.llvm.org/extra/clang-tidy/checks/readability-redundant-declaration.html>`_ check
 

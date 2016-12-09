@@ -47,7 +47,7 @@ will be transformed to:
     typdef int tb;
   }
 
-Only declaration within a compound statement are matched. Meaning, global declarations
+Only declarations within a compound statement are matched. Meaning, global declarations
 and function parameters are not matched. Moreover, it does not match on the following:
 
 .. code-block:: c++
