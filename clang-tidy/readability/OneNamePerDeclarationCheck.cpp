@@ -51,7 +51,7 @@ void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
       const LangOptions &LangOpts = getLangOpts();
 
       const std::string CurrentIndent =
-              getCurrentLineIndent(DeclStmt->getLocStart(), SM);
+          getCurrentLineIndent(DeclStmt->getLocStart(), SM);
       std::string UserWrittenType = getUserWrittenType(DeclStmt, SM);
 
       std::string AllSingleDeclarations = "";
@@ -72,12 +72,15 @@ void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
 
         std::string SingleDeclaration = UserWrittenType + " ";
 
-        if (const clang::DeclaratorDecl *DecDecl = llvm::dyn_cast<const clang::DeclaratorDecl>(*it))
+        if (const clang::DeclaratorDecl *DecDecl =
+                llvm::dyn_cast<const clang::DeclaratorDecl>(*it))
           VariableLocation.setEnd(DecDecl->getLocEnd());
-        else if (const clang::TypedefDecl *TypeDecl = llvm::dyn_cast<const clang::TypedefDecl>(*it))
+        else if (const clang::TypedefDecl *TypeDecl =
+                     llvm::dyn_cast<const clang::TypedefDecl>(*it))
           VariableLocation.setEnd(TypeDecl->getLocEnd());
         else
-          llvm_unreachable("Declaration is neither a DeclaratorDecl nor a TypedefDecl");
+          llvm_unreachable(
+              "Declaration is neither a DeclaratorDecl nor a TypedefDecl");
 
         if (it == DeclStmt->getDeclGroup().begin())
           VariableLocation.setBegin(DeclStmt->getLocStart());
@@ -153,23 +156,22 @@ OneNamePerDeclarationCheck::getUserWrittenType(const clang::DeclStmt *DeclStmt,
   size_t NameSize = 0;
   QualType Type;
 
-  if(auto FirstVar = llvm::dyn_cast<const clang::DeclaratorDecl>(*FirstVarIt))
-  {
+  if (auto FirstVar =
+          llvm::dyn_cast<const clang::DeclaratorDecl>(*FirstVarIt)) {
     Location = FirstVar->getLocation();
     NameSize = FirstVar->getName().size();
     Type = FirstVar->getType();
-  }
-  else if(auto FirstVar = llvm::dyn_cast<const clang::TypedefDecl>(*FirstVarIt))
-  {
+  } else if (auto FirstVar =
+                 llvm::dyn_cast<const clang::TypedefDecl>(*FirstVarIt)) {
     Location = FirstVar->getLocation();
     NameSize = FirstVar->getName().size();
 
     Type = FirstVar->getTypeSourceInfo()->getType();
-    if(Type->isLValueReferenceType())
+    if (Type->isLValueReferenceType())
       Type = Type->getPointeeType();
-  }
-  else
-    llvm_unreachable("Declaration is neither a DeclaratorDecl nor a TypedefDecl");
+  } else
+    llvm_unreachable(
+        "Declaration is neither a DeclaratorDecl nor a TypedefDecl");
 
   SourceRange FVLoc(DeclStmt->getLocStart(), Location);
 
