@@ -182,5 +182,21 @@ void complex()
     // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
     // CHECK-FIXES: {{^    }}const int *&pref1 = p1;
     // CHECK-FIXES: {{^    }}const int *&pref2 = p2;
+    
+    typedef int *tptr, tbt;
+    // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
+    // CHECK-FIXES: {{^    }}typedef int *tptr;
+    // CHECK-FIXES: {{^    }}typedef int tbt;
+    
+    typedef int (&tfp)(int, long), tarr[10];
+    // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
+    // CHECK-FIXES: {{^    }}typedef int (&tfp)(int, long);
+    // CHECK-FIXES: {{^    }}typedef int tarr[10];
+    
+    typedef int tarr2[10], tct;
+    // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
+    // CHECK-FIXES: {{^    }}typedef int tarr2[10];
+    // CHECK-FIXES: {{^    }}typedef int tct;
+
 }
 

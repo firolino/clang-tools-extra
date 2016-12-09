@@ -113,5 +113,20 @@ void simple()
     // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
     // CHECK-FIXES: {{^    }}const int &r1 = refme1;
     // CHECK-FIXES: {{^    }}const int &r2 = refme2;
+    
+    typedef int ta, tb;
+    // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
+    // CHECK-FIXES: {{^    }}typedef int ta;
+    // CHECK-FIXES: {{^    }}typedef int tb;
+    
+    typedef const int tca, tcb;
+    // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
+    // CHECK-FIXES: {{^    }}typedef const int tca;
+    // CHECK-FIXES: {{^    }}typedef const int tcb;
+    
+    typedef int const tac, tbc;
+    // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
+    // CHECK-FIXES: {{^    }}typedef int const tac;
+    // CHECK-FIXES: {{^    }}typedef int const tbc;
 }
 

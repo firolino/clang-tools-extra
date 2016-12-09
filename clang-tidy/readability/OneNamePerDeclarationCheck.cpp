@@ -72,15 +72,15 @@ void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
 
         std::string SingleDeclaration = UserWrittenType + " ";
 
-        const clang::DeclaratorDecl *DecDecl =
-            llvm::dyn_cast<const clang::DeclaratorDecl>(*it);
-        if (DecDecl == nullptr)
-          continue;
+        if (const clang::DeclaratorDecl *DecDecl = llvm::dyn_cast<const clang::DeclaratorDecl>(*it))
+          VariableLocation.setEnd(DecDecl->getLocEnd());
+        else if (const clang::TypedefDecl *TypeDecl = llvm::dyn_cast<const clang::TypedefDecl>(*it))
+          VariableLocation.setEnd(TypeDecl->getLocEnd());
+        else
+          llvm_unreachable("Declaration is neither a DeclaratorDecl nor a TypedefDecl");
 
         if (it == DeclStmt->getDeclGroup().begin())
           VariableLocation.setBegin(DeclStmt->getLocStart());
-
-        VariableLocation.setEnd(DecDecl->getLocEnd());
 
         std::string VariableLocationStr =
             Lexer::getSourceText(
@@ -148,26 +148,43 @@ std::string
 OneNamePerDeclarationCheck::getUserWrittenType(const clang::DeclStmt *DeclStmt,
                                                SourceManager &SM) {
   auto FirstVarIt = DeclStmt->getDeclGroup().begin();
-  auto FirstVar = llvm::dyn_cast<const clang::DeclaratorDecl>(*FirstVarIt);
 
-  assert(FirstVar != nullptr && "DeclStmt has no element!");
+  SourceLocation Location;
+  size_t NameSize = 0;
+  QualType Type;
 
-  SourceRange FVLoc(DeclStmt->getLocStart(), FirstVar->getLocation());
+  if(auto FirstVar = llvm::dyn_cast<const clang::DeclaratorDecl>(*FirstVarIt))
+  {
+    Location = FirstVar->getLocation();
+    NameSize = FirstVar->getName().size();
+    Type = FirstVar->getType();
+  }
+  else if(auto FirstVar = llvm::dyn_cast<const clang::TypedefDecl>(*FirstVarIt))
+  {
+    Location = FirstVar->getLocation();
+    NameSize = FirstVar->getName().size();
+
+    Type = FirstVar->getTypeSourceInfo()->getType();
+    if(Type->isLValueReferenceType())
+      Type = Type->getPointeeType();
+  }
+  else
+    llvm_unreachable("Declaration is neither a DeclaratorDecl nor a TypedefDecl");
+
+  SourceRange FVLoc(DeclStmt->getLocStart(), Location);
 
   std::string FVStr = Lexer::getSourceText(
       CharSourceRange::getTokenRange(FVLoc), SM, getLangOpts());
 
-  FVStr.erase(FVStr.size() - FirstVar->getName().size()); // remove var name
+  FVStr.erase(FVStr.size() - NameSize); // remove var name
   std::string UserWrittenType = StringRef(FVStr).trim();
-
-  auto Type = FirstVar->getType();
 
   // UserWrittenType might be and we want ->
   // const int S::* -> const int
   // const int *&   -> const int
   // long **        -> long int
 
-  if (Type->isFunctionPointerType()) {
+  if (Type->isFunctionPointerType() || Type->isFunctionProtoType()) {
     auto Pos = UserWrittenType.find('(');
     if (Pos != std::string::npos) { // might be hidden behind typedef etc.
       UserWrittenType.erase(Pos);
