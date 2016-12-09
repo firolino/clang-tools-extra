@@ -17,7 +17,7 @@ namespace clang {
 namespace tidy {
 namespace readability {
 
-/// FIXME: Write a short description.
+/// Checks for declarations, declaring more than one name.
 ///
 /// For the user-facing documentation see:
 /// http://clang.llvm.org/extra/clang-tidy/checks/readability-one-name-per-declaration.html
