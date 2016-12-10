@@ -82,6 +82,11 @@ void complex()
     // CHECK-FIXES: {{^    }}StructOne s4(3);
     // CHECK-FIXES: {{^    }}StructOne *sptr = new StructOne(2);
     
+    struct StructOne cs1, cs2( 42 );
+    // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
+    // CHECK-FIXES: {{^    }}struct StructOne cs1;
+    // CHECK-FIXES: {{^    }}struct StructOne cs2( 42 );
+    
     int *ptrArray[3], dummy, **ptrArray2[5], twoDim[2][3], *twoDimPtr[2][3];
     // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
     // CHECK-FIXES: {{^    }}int *ptrArray[3];
