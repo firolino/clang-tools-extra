@@ -55,7 +55,7 @@ void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
       getCurrentLineIndent(DeclStmt->getLocStart(), SM);
   const std::string UserWrittenType = getUserWrittenType(DeclStmt, SM);
 
-  std::string AllSingleDeclarations = "";
+  std::string AllSingleDeclarations;
   SourceRange VariableLocation;
 
   // We will iterate through the declaration group and split it into
@@ -68,23 +68,25 @@ void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
   // - Next iteration will cut-off v
   //     - 'UserWrittenType v' will be saved
   // - and so on...
-  for (auto it = DeclStmt->getDeclGroup().begin();
-       it != DeclStmt->getDeclGroup().end(); ++it) {
+  for (auto It = DeclStmt->getDeclGroup().begin();
+       It != DeclStmt->getDeclGroup().end(); ++It) {
 
     std::string SingleDeclaration = UserWrittenType + " ";
 
     if (const clang::DeclaratorDecl *DecDecl =
-            llvm::dyn_cast<const clang::DeclaratorDecl>(*it))
+            llvm::dyn_cast<const clang::DeclaratorDecl>(*It)) {
       VariableLocation.setEnd(DecDecl->getLocEnd());
-    else if (const clang::TypedefDecl *TypeDecl =
-                 llvm::dyn_cast<const clang::TypedefDecl>(*it))
+    } else if (const clang::TypedefDecl *TypeDecl =
+                   llvm::dyn_cast<const clang::TypedefDecl>(*It)) {
       VariableLocation.setEnd(TypeDecl->getLocEnd());
-    else
+    } else {
       llvm_unreachable(
           "Declaration is neither a DeclaratorDecl nor a TypedefDecl");
+    }
 
-    if (it == DeclStmt->getDeclGroup().begin())
+    if (It == DeclStmt->getDeclGroup().begin()) {
       VariableLocation.setBegin(DeclStmt->getLocStart());
+    }
 
     std::string VariableLocationStr =
         Lexer::getSourceText(CharSourceRange::getTokenRange(VariableLocation),
@@ -92,18 +94,20 @@ void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
             .trim();
 
     // Check for pre-processor directive and add appropriate newline
-    if (VariableLocationStr[0] == '#')
+    if (VariableLocationStr[0] == '#') {
       VariableLocationStr.insert(0, "\n");
+    }
 
-    if (it == DeclStmt->getDeclGroup().begin())
+    if (It == DeclStmt->getDeclGroup().begin()) {
       SingleDeclaration = VariableLocationStr;
-    else
+    } else {
       SingleDeclaration += VariableLocationStr;
+    }
 
     // Workaround for
     // http://lists.llvm.org/pipermail/cfe-dev/2016-November/051425.html
     if (const clang::VarDecl *VarDecl =
-            llvm::dyn_cast<const clang::VarDecl>(*it)) {
+            llvm::dyn_cast<const clang::VarDecl>(*It)) {
 
       if (VarDecl->getType().getCanonicalType()->isScalarType() &&
           VarDecl->hasInit() &&
@@ -128,12 +132,12 @@ void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
     AllSingleDeclarations += SingleDeclaration + ";\n" + CurrentIndent;
 
     // Lookout for next location start
-    const std::vector<tok::TokenKind> tokens = {tok::semi, tok::comma};
+    const std::vector<tok::TokenKind> Tokens = {tok::semi, tok::comma};
     VariableLocation.setBegin(tidy::utils::lexer::findLocationAfterToken(
-        VariableLocation.getEnd(), tokens, *Result.Context));
+        VariableLocation.getEnd(), Tokens, *Result.Context));
   }
 
-  if (AllSingleDeclarations.empty() == false) {
+  if (!AllSingleDeclarations.empty()) {
 
     // Remove last indent and '\n'
     AllSingleDeclarations = StringRef(AllSingleDeclarations).rtrim();
@@ -166,11 +170,13 @@ OneNamePerDeclarationCheck::getUserWrittenType(const clang::DeclStmt *DeclStmt,
     NameSize = FirstVar->getName().size();
 
     Type = FirstVar->getTypeSourceInfo()->getType();
-    if (Type->isLValueReferenceType())
+    if (Type->isLValueReferenceType()) {
       Type = Type->getPointeeType();
-  } else
+    }
+  } else {
     llvm_unreachable(
         "Declaration is neither a DeclaratorDecl nor a TypedefDecl");
+  }
 
   SourceRange FVLoc(DeclStmt->getLocStart(), Location);
 
@@ -254,8 +260,9 @@ static std::string getCurrentLineIndent(SourceLocation Loc,
   StringRef IndentSpace;
   {
     size_t i = LineOffs;
-    while (isWhitespaceExceptNL(MB[i]))
+    while (isWhitespaceExceptNL(MB[i])) {
       ++i;
+    }
     IndentSpace = MB.substr(LineOffs, i - LineOffs);
   }
 
