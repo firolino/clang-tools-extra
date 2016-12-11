@@ -64,7 +64,7 @@ void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
   // single declarations. For example:
   // int *p, q = 2, v;
   // - UserWrittenType will be int
-  // - Fist iteration will cut-off 'int *p' and set locations accordingly
+  // - First iteration will cut-off 'int *p' and set locations accordingly
   // - Next iteration will start after the comma and so cut-off 'q = 2'
   //     - 'UserWrittenType q = 2' will be saved
   // - Next iteration will cut-off v

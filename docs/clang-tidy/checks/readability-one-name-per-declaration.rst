@@ -43,8 +43,8 @@ will be transformed to:
     decltype(int()) declint1 = 5;
     decltype(int()) declint2 = 3;
     
-    typdef int ta;
-    typdef int tb;
+    typedef int ta;
+    typedef int tb;
   }
 
 Only declarations within a compound statement are matched. Meaning, global declarations
