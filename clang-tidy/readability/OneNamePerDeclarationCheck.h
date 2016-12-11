@@ -23,8 +23,7 @@ namespace readability {
 /// http://clang.llvm.org/extra/clang-tidy/checks/readability-one-name-per-declaration.html
 class OneNamePerDeclarationCheck : public ClangTidyCheck {
 private:
-  std::string getUserWrittenType(const clang::DeclStmt *DeclStmt,
-                                 SourceManager &SM);
+  std::string getUserWrittenType(const DeclStmt *DeclStmt, SourceManager &SM);
 
 public:
   OneNamePerDeclarationCheck(StringRef Name, ClangTidyContext *Context)

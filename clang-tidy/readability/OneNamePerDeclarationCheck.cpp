@@ -13,9 +13,7 @@
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Lex/Lexer.h"
 
-using namespace clang;
 using namespace clang::ast_matchers;
-using namespace llvm;
 
 namespace clang {
 namespace tidy {
@@ -41,21 +39,21 @@ void OneNamePerDeclarationCheck::registerMatchers(MatchFinder *Finder) {
 }
 
 void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
-  const auto *DeclStmt = Result.Nodes.getNodeAs<clang::DeclStmt>("declstmt");
-  if (DeclStmt == nullptr)
+  const auto *DeclStatement = Result.Nodes.getNodeAs<DeclStmt>("declstmt");
+  if (DeclStatement == nullptr)
     return;
 
   // Macros will be ignored
-  if (DeclStmt->getLocStart().isMacroID())
+  if (DeclStatement->getLocStart().isMacroID())
     return;
 
   SourceManager &SM = *Result.SourceManager;
   const LangOptions &LangOpts = getLangOpts();
-  const auto DeclGroup = DeclStmt->getDeclGroup();
+  const auto DeclGroup = DeclStatement->getDeclGroup();
 
   const std::string CurrentIndent =
-      getCurrentLineIndent(DeclStmt->getLocStart(), SM);
-  const std::string UserWrittenType = getUserWrittenType(DeclStmt, SM);
+      getCurrentLineIndent(DeclStatement->getLocStart(), SM);
+  const std::string UserWrittenType = getUserWrittenType(DeclStatement, SM);
 
   std::string AllSingleDeclarations;
   SourceRange VariableLocation;
@@ -74,11 +72,9 @@ void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
 
     std::string SingleDeclaration = UserWrittenType + " ";
 
-    if (const auto *DecDecl =
-            llvm::dyn_cast<const clang::DeclaratorDecl>(*It)) {
+    if (const auto *DecDecl = dyn_cast<const DeclaratorDecl>(*It)) {
       VariableLocation.setEnd(DecDecl->getLocEnd());
-    } else if (const auto *TypeDecl =
-                   llvm::dyn_cast<const clang::TypedefDecl>(*It)) {
+    } else if (const auto *TypeDecl = dyn_cast<const TypedefDecl>(*It)) {
       VariableLocation.setEnd(TypeDecl->getLocEnd());
     } else {
       llvm_unreachable(
@@ -86,7 +82,7 @@ void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
     }
 
     if (It == DeclGroup.begin()) {
-      VariableLocation.setBegin(DeclStmt->getLocStart());
+      VariableLocation.setBegin(DeclStatement->getLocStart());
     }
 
     std::string VariableLocationStr =
@@ -107,11 +103,11 @@ void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
 
     // Workaround for
     // http://lists.llvm.org/pipermail/cfe-dev/2016-November/051425.html
-    if (const auto *VarDecl = llvm::dyn_cast<const clang::VarDecl>(*It)) {
+    if (const auto *VariableDecl = dyn_cast<const VarDecl>(*It)) {
 
-      if (VarDecl->getType().getCanonicalType()->isScalarType() &&
-          VarDecl->hasInit() &&
-          VarDecl->getInitStyle() == clang::VarDecl::CallInit) {
+      if (VariableDecl->getType().getCanonicalType()->isScalarType() &&
+          VariableDecl->hasInit() &&
+          VariableDecl->getInitStyle() == VarDecl::CallInit) {
 
         const auto PP =
             Lexer::findLocationAfterToken(VariableLocation.getEnd(),
@@ -142,16 +138,16 @@ void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
     // Remove last indent and '\n'
     AllSingleDeclarations = StringRef(AllSingleDeclarations).rtrim();
 
-    auto Diag = diag(DeclStmt->getSourceRange().getBegin(),
+    auto Diag = diag(DeclStatement->getSourceRange().getBegin(),
                      "declaration statement can be split up into single "
                      "line declarations");
-    Diag << FixItHint::CreateReplacement(DeclStmt->getSourceRange(),
+    Diag << FixItHint::CreateReplacement(DeclStatement->getSourceRange(),
                                          AllSingleDeclarations);
   }
 }
 
 std::string
-OneNamePerDeclarationCheck::getUserWrittenType(const clang::DeclStmt *DeclStmt,
+OneNamePerDeclarationCheck::getUserWrittenType(const DeclStmt *DeclStmt,
                                                SourceManager &SM) {
   const auto FirstVarIt = DeclStmt->getDeclGroup().begin();
 
@@ -159,13 +155,11 @@ OneNamePerDeclarationCheck::getUserWrittenType(const clang::DeclStmt *DeclStmt,
   size_t NameSize = 0;
   QualType Type;
 
-  if (const auto *FirstVar =
-          llvm::dyn_cast<const clang::DeclaratorDecl>(*FirstVarIt)) {
+  if (const auto *FirstVar = dyn_cast<const DeclaratorDecl>(*FirstVarIt)) {
     Location = FirstVar->getLocation();
     NameSize = FirstVar->getName().size();
     Type = FirstVar->getType();
-  } else if (const auto *FirstVar =
-                 llvm::dyn_cast<const clang::TypedefDecl>(*FirstVarIt)) {
+  } else if (const auto *FirstVar = dyn_cast<const TypedefDecl>(*FirstVarIt)) {
     Location = FirstVar->getLocation();
     NameSize = FirstVar->getName().size();
 
