@@ -29,14 +29,15 @@ static std::string getCurrentLineIndent(SourceLocation Loc,
 
 void OneNamePerDeclarationCheck::registerMatchers(MatchFinder *Finder) {
 
-  // Matches all declaration within a compound statement {...}.
+  // Matches all non-single declaration within a compound statement {...}.
   // Unless, the variable declaration is a object definition directly after
   // a tag declaration (e.g. struct, class etc.):
   // class A { } Object1, Object2;  <-- won't be matched
-  Finder->addMatcher(declStmt(allOf(hasParent(compoundStmt()),
-                                    unless(hasDescendant(tagDecl()))))
-                         .bind("declstmt"),
-                     this);
+  Finder->addMatcher(
+      declStmt(allOf(hasParent(compoundStmt()),
+                     unless(hasDescendant(tagDecl())), unless(declCountIs(1))))
+          .bind("declstmt"),
+      this);
 }
 
 void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
@@ -44,12 +45,13 @@ void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
   if (DeclStmt == nullptr)
     return;
 
-  // Single declarations and macros will be ignored
-  if (DeclStmt->isSingleDecl() || DeclStmt->getLocStart().isMacroID())
+  // Macros will be ignored
+  if (DeclStmt->getLocStart().isMacroID())
     return;
 
   SourceManager &SM = *Result.SourceManager;
   const LangOptions &LangOpts = getLangOpts();
+  const auto DeclGroup = DeclStmt->getDeclGroup();
 
   const std::string CurrentIndent =
       getCurrentLineIndent(DeclStmt->getLocStart(), SM);
@@ -68,15 +70,14 @@ void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
   // - Next iteration will cut-off v
   //     - 'UserWrittenType v' will be saved
   // - and so on...
-  for (auto It = DeclStmt->getDeclGroup().begin();
-       It != DeclStmt->getDeclGroup().end(); ++It) {
+  for (auto It = DeclGroup.begin(); It != DeclGroup.end(); ++It) {
 
     std::string SingleDeclaration = UserWrittenType + " ";
 
-    if (const clang::DeclaratorDecl *DecDecl =
+    if (const auto *DecDecl =
             llvm::dyn_cast<const clang::DeclaratorDecl>(*It)) {
       VariableLocation.setEnd(DecDecl->getLocEnd());
-    } else if (const clang::TypedefDecl *TypeDecl =
+    } else if (const auto *TypeDecl =
                    llvm::dyn_cast<const clang::TypedefDecl>(*It)) {
       VariableLocation.setEnd(TypeDecl->getLocEnd());
     } else {
@@ -84,7 +85,7 @@ void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
           "Declaration is neither a DeclaratorDecl nor a TypedefDecl");
     }
 
-    if (It == DeclStmt->getDeclGroup().begin()) {
+    if (It == DeclGroup.begin()) {
       VariableLocation.setBegin(DeclStmt->getLocStart());
     }
 
@@ -98,7 +99,7 @@ void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
       VariableLocationStr.insert(0, "\n");
     }
 
-    if (It == DeclStmt->getDeclGroup().begin()) {
+    if (It == DeclGroup.begin()) {
       SingleDeclaration = VariableLocationStr;
     } else {
       SingleDeclaration += VariableLocationStr;
@@ -106,14 +107,13 @@ void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
 
     // Workaround for
     // http://lists.llvm.org/pipermail/cfe-dev/2016-November/051425.html
-    if (const clang::VarDecl *VarDecl =
-            llvm::dyn_cast<const clang::VarDecl>(*It)) {
+    if (const auto *VarDecl = llvm::dyn_cast<const clang::VarDecl>(*It)) {
 
       if (VarDecl->getType().getCanonicalType()->isScalarType() &&
           VarDecl->hasInit() &&
           VarDecl->getInitStyle() == clang::VarDecl::CallInit) {
 
-        auto PP =
+        const auto PP =
             Lexer::findLocationAfterToken(VariableLocation.getEnd(),
                                           tok::r_paren, SM, LangOpts, true)
                 .getLocWithOffset(-1);
@@ -153,18 +153,18 @@ void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
 std::string
 OneNamePerDeclarationCheck::getUserWrittenType(const clang::DeclStmt *DeclStmt,
                                                SourceManager &SM) {
-  auto FirstVarIt = DeclStmt->getDeclGroup().begin();
+  const auto FirstVarIt = DeclStmt->getDeclGroup().begin();
 
   SourceLocation Location;
   size_t NameSize = 0;
   QualType Type;
 
-  if (const auto FirstVar =
+  if (const auto *FirstVar =
           llvm::dyn_cast<const clang::DeclaratorDecl>(*FirstVarIt)) {
     Location = FirstVar->getLocation();
     NameSize = FirstVar->getName().size();
     Type = FirstVar->getType();
-  } else if (const auto FirstVar =
+  } else if (const auto *FirstVar =
                  llvm::dyn_cast<const clang::TypedefDecl>(*FirstVarIt)) {
     Location = FirstVar->getLocation();
     NameSize = FirstVar->getName().size();
@@ -211,11 +211,12 @@ OneNamePerDeclarationCheck::getUserWrittenType(const clang::DeclStmt *DeclStmt,
     return UserWrittenType;
   }
 
-  if (const MemberPointerType *T = Type->getAs<MemberPointerType>()) {
+  if (const auto *MemberPointerT = Type->getAs<MemberPointerType>()) {
     auto Pos = UserWrittenType.find("::");
     if (Pos != std::string::npos) { // might be hidden behind typedef etc.
 
-      StringRef CN = T->getClass()->getCanonicalTypeInternal().getAsString();
+      StringRef CN =
+          MemberPointerT->getClass()->getCanonicalTypeInternal().getAsString();
 
       // CN will be 'struct/class Typename'. we are only interested in the
       // second part
