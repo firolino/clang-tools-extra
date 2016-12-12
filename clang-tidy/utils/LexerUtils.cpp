@@ -35,18 +35,22 @@ Token getPreviousNonCommentToken(const ASTContext &Context,
   return Token;
 }
 
-SourceLocation findLocationAfterToken(SourceLocation Loc,
-                                      const std::vector<tok::TokenKind> &Tokens,
-                                      ASTContext &Context) {
+SourceLocation findTokenLocationBackward(const ASTContext &Context,
+                                         SourceLocation Location,
+                                         tok::TokenKind TokenToFind) {
   const auto &SM = Context.getSourceManager();
   const auto &LO = Context.getLangOpts();
+  auto StartOfFile = SM.getLocForStartOfFile(SM.getFileID(Location));
 
-  for (auto Token : Tokens) {
-    auto FLoc = Lexer::findLocationAfterToken(
-        Loc, Token, SM, LO, /*SkipTrailingWhitespaceAndNewLine*/ true);
+  Token CurrentToken;
+  CurrentToken.setKind(tok::unknown);
 
-    if (FLoc.isValid())
-      return FLoc;
+  while (Location != StartOfFile) {
+    if (!Lexer::getRawToken(Location, CurrentToken, SM, LO) &&
+        CurrentToken.is(TokenToFind)) {
+      return Location;
+    }
+    Location = Location.getLocWithOffset(-1);
   }
 
   return SourceLocation();

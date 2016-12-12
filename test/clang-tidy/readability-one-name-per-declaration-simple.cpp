@@ -26,14 +26,14 @@ void simple()
     	// CHECK-FIXES: {{^    	}}long int *lint5;
     	// CHECK-FIXES: {{^    	}}long int lint6;
     
-    unsigned int uint1 = 0, uint2 = 44u, uint3, uint4=4;
+    unsigned int uint1 = 0,uint2 = 44u, uint3, uint4=4;
     // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
     // CHECK-FIXES: {{^    }}unsigned int uint1 = 0;
     // CHECK-FIXES: {{^    }}unsigned int uint2 = 44u;
     // CHECK-FIXES: {{^    }}unsigned int uint3;
     // CHECK-FIXES: {{^    }}unsigned int uint4=4;
     
-    double darray1[] = {}, darray2[] = {1,	2}, dv1 = 3, dv2;
+    double darray1[] = {}, darray2[] = {1,	2},dv1 = 3,dv2;
     // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
     // CHECK-FIXES: {{^    }}double darray1[] = {};
     // CHECK-FIXES: {{^    }}double darray2[] = {1,	2};
