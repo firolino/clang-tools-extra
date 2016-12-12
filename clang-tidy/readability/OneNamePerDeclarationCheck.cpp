@@ -47,17 +47,17 @@ void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
   if (DeclStatement->getLocStart().isMacroID())
     return;
 
-  auto Diag = diag(DeclStatement->getSourceRange().getBegin(),
-                   "declaration statement can be split up into single "
-                   "line declarations");
-
   SourceManager &SM = *Result.SourceManager;
   const LangOptions &LangOpts = getLangOpts();
   const auto DeclGroup = DeclStatement->getDeclGroup();
 
-  const std::string CurrentIndent =
-      getCurrentLineIndent(DeclStatement->getLocStart(), SM);
+  const auto DeclStmtStart = DeclStatement->getLocStart();
+  const std::string CurrentIndent = getCurrentLineIndent(DeclStmtStart, SM);
   const std::string UserWrittenType = getUserWrittenType(DeclStatement, SM);
+
+  auto Diag = diag(
+      DeclStmtStart,
+      "declaration statement can be split up into single line declarations");
 
   // We will iterate through the declaration group starting with the second
   // declaration. Then, the previous comma will be searched and replaced by a
@@ -71,19 +71,18 @@ void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
       llvm_unreachable("Declaration is not a NamedDecl");
     }
 
-    auto CommaLocation = utils::lexer::findTokenLocationBackward(
+    const auto CommaLocation = utils::lexer::findTokenLocationBackward(
         *Result.Context, NameLocation, tok::comma);
     if (CommaLocation.isValid()) {
-      SourceRange CommaRange(CommaLocation, CommaLocation);
-      SourceRange AfterCommaToVarNameRange(CommaLocation.getLocWithOffset(1),
-                                           NameLocation);
+      const SourceRange AfterCommaToVarNameRange(
+          CommaLocation.getLocWithOffset(1), NameLocation);
       const std::string AnyTokenBetweenCommaAndVarName =
           Lexer::getSourceText(
               CharSourceRange::getTokenRange(AfterCommaToVarNameRange), SM,
               LangOpts)
               .ltrim(); // may be &, *, etc.
 
-      Diag << FixItHint::CreateReplacement(CommaRange, ";")
+      Diag << FixItHint::CreateReplacement(CommaLocation, ";")
            << FixItHint::CreateReplacement(AfterCommaToVarNameRange,
                                            "\n" + CurrentIndent +
                                                UserWrittenType + " " +
@@ -118,7 +117,7 @@ OneNamePerDeclarationCheck::getUserWrittenType(const DeclStmt *DeclStmt,
         "Declaration is neither a DeclaratorDecl nor a TypedefDecl");
   }
 
-  SourceRange FVLoc(DeclStmt->getLocStart(), Location);
+  const SourceRange FVLoc(DeclStmt->getLocStart(), Location);
 
   std::string FVStr = Lexer::getSourceText(
       CharSourceRange::getTokenRange(FVLoc), SM, getLangOpts());
@@ -132,7 +131,7 @@ OneNamePerDeclarationCheck::getUserWrittenType(const DeclStmt *DeclStmt,
   // long **        -> long int
 
   if (Type->isFunctionPointerType() || Type->isFunctionProtoType()) {
-    auto Pos = UserWrittenType.find('(');
+    const auto Pos = UserWrittenType.find('(');
     if (Pos != std::string::npos) { // might be hidden behind typedef etc.
       UserWrittenType.erase(Pos);
       UserWrittenType = StringRef(UserWrittenType).trim();
@@ -142,7 +141,7 @@ OneNamePerDeclarationCheck::getUserWrittenType(const DeclStmt *DeclStmt,
   }
 
   if (Type->isPointerType() || Type->isArrayType() || Type->isReferenceType()) {
-    auto Pos = UserWrittenType.find_last_not_of("&*");
+    const auto Pos = UserWrittenType.find_last_not_of("&*");
     if (Pos != std::string::npos) { // might be hidden behind typedef etc.
       UserWrittenType.erase(Pos + 1);
       UserWrittenType = StringRef(UserWrittenType).trim();
