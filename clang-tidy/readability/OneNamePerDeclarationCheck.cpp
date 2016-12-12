@@ -65,13 +65,10 @@ void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
   for (auto It = DeclGroup.begin() + 1; It != DeclGroup.end(); ++It) {
 
     SourceLocation NameLocation;
-    if (const auto *DecDecl = dyn_cast<const DeclaratorDecl>(*It)) {
-      NameLocation = DecDecl->getLocation();
-    } else if (const auto *TypeDecl = dyn_cast<const TypedefDecl>(*It)) {
-      NameLocation = TypeDecl->getLocation();
+    if (const auto *ND = dyn_cast<const NamedDecl>(*It)) {
+      NameLocation = ND->getLocation();
     } else {
-      llvm_unreachable(
-          "Declaration is neither a DeclaratorDecl nor a TypedefDecl");
+      llvm_unreachable("Declaration is not a NamedDecl");
     }
 
     auto CommaLocation = utils::lexer::findTokenLocationBackward(
