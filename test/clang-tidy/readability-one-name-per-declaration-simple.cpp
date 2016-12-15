@@ -38,6 +38,11 @@ void simple()
     // CHECK-FIXES: {{^    }}unsigned int uint3;
     // CHECK-FIXES: {{^    }}unsigned int uint4=4;
     
+    const int * const cpc = &dontTouchC, simple = 0;
+    // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
+    // CHECK-FIXES: {{^    }}const int * const cpc = &dontTouchC;
+    // CHECK-FIXES: {{^    }}const int simple = 0;
+    
     double darray1[] = {}, darray2[] = {1,	2},dv1 = 3,dv2;
     // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
     // CHECK-FIXES: {{^    }}double darray1[] = {};
