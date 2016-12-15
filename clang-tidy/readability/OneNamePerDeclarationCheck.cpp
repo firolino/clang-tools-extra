@@ -21,7 +21,8 @@ namespace readability {
 
 const internal::VariadicDynCastAllOfMatcher<Decl, TagDecl> tagDecl;
 
-static bool isWhitespaceExceptNL(unsigned char c);
+static bool isWhitespaceExceptNL(unsigned char C);
+static std::string removeMultiLineComments(std::string Str);
 static std::string getCurrentLineIndent(SourceLocation Loc,
                                         const SourceManager &SM);
 
@@ -32,7 +33,7 @@ void OneNamePerDeclarationCheck::registerMatchers(MatchFinder *Finder) {
   // a tag declaration (e.g. struct, class etc.):
   // class A { } Object1, Object2;  <-- won't be matched
   Finder->addMatcher(
-      declStmt(allOf(hasParent(compoundStmt()),
+      declStmt(allOf(hasParent(compoundStmt()), hasDescendant(namedDecl()),
                      unless(hasDescendant(tagDecl())), unless(declCountIs(1))))
           .bind("declstmt"),
       this);
@@ -64,23 +65,22 @@ void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
   // ';' and the UserWrittenType inserted after it.
   for (auto It = DeclGroup.begin() + 1; It != DeclGroup.end(); ++It) {
 
-    SourceLocation NameLocation;
-    if (const auto *ND = dyn_cast<const NamedDecl>(*It)) {
-      NameLocation = ND->getLocation();
-    } else {
-      llvm_unreachable("Declaration is not a NamedDecl");
-    }
-
+    const auto NameLocation = dyn_cast<const NamedDecl>(*It)->getLocation();
     const auto CommaLocation = utils::lexer::findTokenLocationBackward(
         *Result.Context, NameLocation, tok::comma);
+
     if (CommaLocation.isValid()) {
       const SourceRange AfterCommaToVarNameRange(
           CommaLocation.getLocWithOffset(1), NameLocation);
-      const std::string AnyTokenBetweenCommaAndVarName =
+      std::string AnyTokenBetweenCommaAndVarName =
           Lexer::getSourceText(
               CharSourceRange::getTokenRange(AfterCommaToVarNameRange), SM,
               LangOpts)
               .ltrim(); // may be &, *, etc.
+
+      // Check for pre-processor directive and add appropriate newline
+      if (AnyTokenBetweenCommaAndVarName.front() == '#')
+        AnyTokenBetweenCommaAndVarName.insert(0, "\n");
 
       Diag << FixItHint::CreateReplacement(CommaLocation, ";")
            << FixItHint::CreateReplacement(AfterCommaToVarNameRange,
@@ -125,6 +125,8 @@ OneNamePerDeclarationCheck::getUserWrittenType(const DeclStmt *DeclStmt,
   FVStr.erase(FVStr.size() - NameSize); // remove var name
   std::string UserWrittenType = StringRef(FVStr).trim();
 
+  UserWrittenType = removeMultiLineComments(UserWrittenType);
+
   // UserWrittenType might be and we want ->
   // const int S::* -> const int
   // const int *&   -> const int
@@ -161,7 +163,6 @@ OneNamePerDeclarationCheck::getUserWrittenType(const DeclStmt *DeclStmt,
       // second part
       CN = CN.split(' ').second;
       Pos = UserWrittenType.rfind(CN, Pos);
-
       UserWrittenType.erase(Pos);
       UserWrittenType = StringRef(UserWrittenType).trim();
     }
@@ -170,8 +171,8 @@ OneNamePerDeclarationCheck::getUserWrittenType(const DeclStmt *DeclStmt,
   return UserWrittenType;
 }
 
-static bool isWhitespaceExceptNL(unsigned char c) {
-  switch (c) {
+static bool isWhitespaceExceptNL(unsigned char C) {
+  switch (C) {
   case ' ':
   case '\t':
   case '\f':
@@ -181,6 +182,18 @@ static bool isWhitespaceExceptNL(unsigned char c) {
   default:
     return false;
   }
+}
+
+static std::string removeMultiLineComments(std::string Str) {
+  auto Pos1 = Str.find("/*");
+  while (Pos1 != std::string::npos) {
+    const auto Pos2 = Str.find("*/", Pos1 + 1);
+    Str.erase(Pos1, Pos2 - Pos1 + 2);
+    Pos1 = Str.find("/*");
+  }
+
+  Str = StringRef(Str).trim();
+  return Str;
 }
 
 static std::string getCurrentLineIndent(SourceLocation Loc,

@@ -26,6 +26,11 @@ void simple()
     	// CHECK-FIXES: {{^    	}}long int *lint5;
     	// CHECK-FIXES: {{^    	}}long int lint6;
     
+    /* *& */ int /* *& */ ** /* *& */ pp,*xx;
+    // CHECK-MESSAGES: :[[@LINE-1]]:14: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
+    // CHECK-FIXES: {{^    }}/* *& */ int /* *& */ ** /* *& */ pp;
+    // CHECK-FIXES: {{^    }}int *xx;
+    
     unsigned int uint1 = 0,uint2 = 44u, uint3, uint4=4;
     // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
     // CHECK-FIXES: {{^    }}unsigned int uint1 = 0;

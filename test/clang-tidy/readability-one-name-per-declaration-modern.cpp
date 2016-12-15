@@ -1,8 +1,7 @@
 // RUN: %check_clang_tidy %s readability-one-name-per-declaration %t -- -- \
-// RUN:   -std=c++14
+// RUN:   -std=c++1y
 
-namespace std {
-    
+namespace std {    
     template <typename T>
     class initializer_list {};
     
@@ -10,19 +9,18 @@ namespace std {
     class vector 
     {
       public:
-        vector() {}
+        vector() = default;
         vector(initializer_list<T> init) {}
     };
     
     class string 
     {
       public:
-        string() {}
+        string() = default;
         string(const char*) {}
     };
     
-    namespace string_literals {
-    
+    namespace string_literals {    
         string operator""s(const char*, decltype(sizeof(int))) 
         {   
             return string(); 
@@ -30,8 +28,7 @@ namespace std {
     }
 }
 
-namespace Types {
-    
+namespace Types {    
     typedef int MyType;    
     int dontTouch1, dontTouch2;
 }
@@ -79,5 +76,8 @@ void modern()
         // CHECK-FIXES: {{^        }}std::vector<std::string> a({"hey", "you"});
         // CHECK-FIXES: {{^        }}std::vector<std::string> bb = {"h", "a" };
     }
+    
+    struct X { int a, b, c; };
+    auto [a, b, c] = X();
 }
 

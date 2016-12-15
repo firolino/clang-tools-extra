@@ -110,6 +110,11 @@ void complex()
             // CHECK-FIXES: {{^            }}void ( *f2)(int);
             // CHECK-FIXES: {{^            }}void (*g2)(int, float) = gg;
             
+            void /*(*/ ( /*(*/ *f3)(int), (*g3)(int, float);
+            // CHECK-MESSAGES: :[[@LINE-1]]:13: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
+            // CHECK-FIXES: {{^            }}void /*(*/ ( /*(*/ *f3)(int);
+            // CHECK-FIXES: {{^            }}void (*g3)(int, float);
+            
         }
     
     struct S { int a; const int b; };
@@ -118,6 +123,11 @@ void complex()
     // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
     // CHECK-FIXES: {{^    }}int S::*p = &S::a;
     // CHECK-FIXES: {{^    }}int S::* const q = &S::a;
+    
+    int /* :: */ S::*pp2 = &S::a, var1 = 0;
+    // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
+    // CHECK-FIXES: {{^    }}int /* :: */ S::*pp2 = &S::a;
+    // CHECK-FIXES: {{^    }}int var1 = 0;
     
     const int S::*r = &S::b, S::*t;
     // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
@@ -174,11 +184,11 @@ void complex()
     // CHECK-MESSAGES: :[[@LINE-6]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
     // CHECK-FIXES: {{^    }}bool defPre = false;
     // CHECK-FIXES: {{^    }}bool 
-    // CHECK-FIXES: #ifdef IS_ENABLED
+    // CHECK-FIXES: {{^#}}ifdef IS_ENABLED
     // CHECK-FIXES: {{^       }}defTest = false;
-    // CHECK-FIXES: #else
+    // CHECK-FIXES: {{^#}}else
     // CHECK-FIXES: {{^       }}defTest = true;
-    // CHECK-FIXES: #endif
+    // CHECK-FIXES: {{^#}}endif
     
     const int *p1 = nullptr;
     const int *p2 = nullptr;
