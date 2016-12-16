@@ -143,13 +143,12 @@ OneNamePerDeclarationCheck::getUserWrittenType(const DeclStmt *DeclStmt,
   }
 
   if (Type->isPointerType() || Type->isArrayType() || Type->isReferenceType()) {
-    auto Pos = UserWrittenType.find_last_of("&*");
+    const auto Pos = UserWrittenType.find_first_of("&*");
     if (Pos != std::string::npos) { // might be hidden behind typedef etc.
-      Pos = UserWrittenType.find_last_not_of("&*", Pos);
-      UserWrittenType.erase(Pos+1);
+      UserWrittenType.erase(Pos);
       UserWrittenType = StringRef(UserWrittenType).trim();
     }
-    
+
     return UserWrittenType;
   }
 
