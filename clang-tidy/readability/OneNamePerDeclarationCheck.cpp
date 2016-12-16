@@ -97,17 +97,13 @@ OneNamePerDeclarationCheck::getUserWrittenType(const DeclStmt *DeclStmt,
   const auto FirstVarIt = DeclStmt->getDeclGroup().begin();
 
   SourceLocation Location;
-  size_t NameSize = 0;
   QualType Type;
 
   if (const auto *FirstVar = dyn_cast<const DeclaratorDecl>(*FirstVarIt)) {
     Location = FirstVar->getLocation();
-    NameSize = FirstVar->getName().size();
     Type = FirstVar->getType();
   } else if (const auto *FirstVar = dyn_cast<const TypedefDecl>(*FirstVarIt)) {
     Location = FirstVar->getLocation();
-    NameSize = FirstVar->getName().size();
-
     Type = FirstVar->getTypeSourceInfo()->getType();
     if (Type->isLValueReferenceType()) {
       Type = Type->getPointeeType();
@@ -118,12 +114,10 @@ OneNamePerDeclarationCheck::getUserWrittenType(const DeclStmt *DeclStmt,
   }
 
   const SourceRange FVLoc(DeclStmt->getLocStart(), Location);
-
-  std::string FVStr = Lexer::getSourceText(
-      CharSourceRange::getTokenRange(FVLoc), SM, getLangOpts());
-
-  FVStr.erase(FVStr.size() - NameSize); // remove var name
-  std::string UserWrittenType = StringRef(FVStr).trim();
+  std::string UserWrittenType =
+      Lexer::getSourceText(CharSourceRange::getCharRange(FVLoc), SM,
+                           getLangOpts())
+          .trim();
 
   UserWrittenType = removeMultiLineComments(UserWrittenType);
 
@@ -132,18 +126,9 @@ OneNamePerDeclarationCheck::getUserWrittenType(const DeclStmt *DeclStmt,
   // const int *&   -> const int
   // long **        -> long int
 
-  if (Type->isFunctionPointerType() || Type->isFunctionProtoType()) {
-    const auto Pos = UserWrittenType.find('(');
-    if (Pos != std::string::npos) { // might be hidden behind typedef etc.
-      UserWrittenType.erase(Pos);
-      UserWrittenType = StringRef(UserWrittenType).trim();
-    }
-
-    return UserWrittenType;
-  }
-
-  if (Type->isPointerType() || Type->isArrayType() || Type->isReferenceType()) {
-    const auto Pos = UserWrittenType.find_first_of("&*");
+  if (Type->isPointerType() || Type->isArrayType() || Type->isReferenceType() ||
+      Type->isFunctionPointerType() || Type->isFunctionProtoType()) {
+    const auto Pos = UserWrittenType.find_first_of("&*(");
     if (Pos != std::string::npos) { // might be hidden behind typedef etc.
       UserWrittenType.erase(Pos);
       UserWrittenType = StringRef(UserWrittenType).trim();
