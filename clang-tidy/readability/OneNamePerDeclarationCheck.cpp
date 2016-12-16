@@ -98,7 +98,6 @@ OneNamePerDeclarationCheck::getUserWrittenType(const DeclStmt *DeclStmt,
 
   SourceLocation Location;
   QualType Type;
-
   if (const auto *FirstVar = dyn_cast<const DeclaratorDecl>(*FirstVarIt)) {
     Location = FirstVar->getLocation();
     Type = FirstVar->getType();
@@ -138,16 +137,12 @@ OneNamePerDeclarationCheck::getUserWrittenType(const DeclStmt *DeclStmt,
   }
 
   if (const auto *MemberPointerT = Type->getAs<MemberPointerType>()) {
-    auto Pos = UserWrittenType.find("::");
+    const StringRef CanonicalClassName =
+        MemberPointerT->getClass()->getCanonicalTypeInternal().getAsString();
+    const std::string ClassName = CanonicalClassName.split(' ').second;
+
+    const auto Pos = UserWrittenType.find(" " + ClassName);
     if (Pos != std::string::npos) { // might be hidden behind typedef etc.
-
-      StringRef CN =
-          MemberPointerT->getClass()->getCanonicalTypeInternal().getAsString();
-
-      // CN will be 'struct/class Typename'. we are only interested in the
-      // second part
-      CN = CN.split(' ').second;
-      Pos = UserWrittenType.rfind(CN, Pos);
       UserWrittenType.erase(Pos);
       UserWrittenType = StringRef(UserWrittenType).trim();
     }
