@@ -104,7 +104,7 @@ OneNamePerDeclarationCheck::getUserWrittenType(const DeclStmt *DeclStmt,
   } else if (const auto *FirstVar = dyn_cast<const TypedefDecl>(*FirstVarIt)) {
     Location = FirstVar->getLocation();
     Type = FirstVar->getTypeSourceInfo()->getType();
-    if (Type->isLValueReferenceType()) {
+    while (Type->isLValueReferenceType()) {
       Type = Type->getPointeeType();
     }
   } else {
@@ -131,7 +131,6 @@ OneNamePerDeclarationCheck::getUserWrittenType(const DeclStmt *DeclStmt,
     Pos = UserWrittenType.find_first_of("&*(");
     if (Pos != std::string::npos) { // might be hidden behind typedef etc.
       UserWrittenType.erase(Pos);
-      UserWrittenType = StringRef(UserWrittenType).trim();
     }
 
     while (Type->isAnyPointerType() || Type->isArrayType())
@@ -153,10 +152,9 @@ OneNamePerDeclarationCheck::getUserWrittenType(const DeclStmt *DeclStmt,
     UserWrittenType = StringRef(UserWrittenType).trim();
     Pos = UserWrittenType.rfind(" ");
     UserWrittenType.erase(Pos);
-    UserWrittenType = StringRef(UserWrittenType).trim();
   }
 
-  return UserWrittenType;
+  return StringRef(UserWrittenType).trim();
 }
 
 static bool isWhitespaceExceptNL(unsigned char C) {

@@ -117,7 +117,7 @@ void complex()
             
         }
     
-    struct S { int a; const int b; };
+    struct S { int a; const int b; void f() {}};
     
     int S::*p = &S::a, S::* const q = &S::a;
     // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
@@ -133,6 +133,33 @@ void complex()
     // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: declaration statement can be split up into single line declarations [readability-one-name-per-declaration]
     // CHECK-FIXES: {{^    }}const int S::*r = &S::b;
     // CHECK-FIXES: {{^    }}const int S::*t;
+    
+    {
+        int S::*mdpa1[2] = {&S::a, &S::a}, var1 = 0;
+        // CHECK-MESSAGES: :[[@LINE-1]]:9: warning: declaration statement can be split
+        // CHECK-FIXES: {{^        }}int S::*mdpa1[2] = {&S::a, &S::a};
+        // CHECK-FIXES: {{^        }}int var1 = 0;
+        
+        int S :: * * mdpa2[2] = {&p, &pp2}, var2 = 0;
+        // CHECK-MESSAGES: :[[@LINE-1]]:9: warning: declaration statement can be split
+        // CHECK-FIXES: {{^        }}int S :: * * mdpa2[2] = {&p, &pp2};
+        // CHECK-FIXES: {{^        }}int var2 = 0;
+        
+        void (S::*mdfp1)() = &S::f, (S::*mdfp2)() = &S::f;
+        // CHECK-MESSAGES: :[[@LINE-1]]:9: warning: declaration statement can be split
+        // CHECK-FIXES: {{^        }}void (S::*mdfp1)() = &S::f;
+        // CHECK-FIXES: {{^        }}void (S::*mdfp2)() = &S::f;
+        
+        void (S::*mdfpa1[2])() = {&S::f, &S::f}, (S::*mdfpa2)() = &S::f;
+        // CHECK-MESSAGES: :[[@LINE-1]]:9: warning: declaration statement can be split
+        // CHECK-FIXES: {{^        }}void (S::*mdfpa1[2])() = {&S::f, &S::f};
+        // CHECK-FIXES: {{^        }}void (S::*mdfpa2)() = &S::f;
+        
+        void (S::**mdfpa3[2])() = {&mdfpa1[0], &mdfpa1[1]}, (S::*mdfpa4)() = &S::f;
+        // CHECK-MESSAGES: :[[@LINE-1]]:9: warning: declaration statement can be split
+        // CHECK-FIXES: {{^        }}void (S::**mdfpa3[2])() = {&mdfpa1[0], &mdfpa1[1]};
+        // CHECK-FIXES: {{^        }}void (S::*mdfpa4)() = &S::f;
+    }
     
     typedef const int S::*MemPtr;
     MemPtr aaa =  &S::a, bbb = &S::b;
