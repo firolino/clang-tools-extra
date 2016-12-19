@@ -124,28 +124,36 @@ OneNamePerDeclarationCheck::getUserWrittenType(const DeclStmt *DeclStmt,
   // const int S::* -> const int
   // const int *&   -> const int
   // long **        -> long int
+  auto Pos = std::string::npos;
 
   if (Type->isPointerType() || Type->isArrayType() || Type->isReferenceType() ||
       Type->isFunctionPointerType() || Type->isFunctionProtoType()) {
-    const auto Pos = UserWrittenType.find_first_of("&*(");
+    Pos = UserWrittenType.find_first_of("&*(");
     if (Pos != std::string::npos) { // might be hidden behind typedef etc.
       UserWrittenType.erase(Pos);
       UserWrittenType = StringRef(UserWrittenType).trim();
     }
 
-    return UserWrittenType;
+    while (Type->isAnyPointerType() || Type->isArrayType())
+      Type = Type->getPointeeOrArrayElementType()->getCanonicalTypeInternal();
   }
 
-  if (const auto *MemberPointerT = Type->getAs<MemberPointerType>()) {
-    const StringRef CanonicalClassName =
-        MemberPointerT->getClass()->getCanonicalTypeInternal().getAsString();
-    const std::string ClassName = CanonicalClassName.split(' ').second;
+  if (Type->isMemberFunctionPointerType() &&
+      (Pos = UserWrittenType.find("(")) && Pos != std::string::npos) {
+    UserWrittenType.erase(Pos);
+    return StringRef(UserWrittenType).trim();
+  }
 
-    const auto Pos = UserWrittenType.find(" " + ClassName);
-    if (Pos != std::string::npos) { // might be hidden behind typedef etc.
-      UserWrittenType.erase(Pos);
-      UserWrittenType = StringRef(UserWrittenType).trim();
-    }
+  if (Type->isMemberDataPointerType() && (Pos = UserWrittenType.rfind("::")) &&
+      Pos != std::string::npos) {
+    // user might have inserted additional whitespaces:
+    // int   S  ::
+    //      ^-  ^- needed positions
+    UserWrittenType.erase(Pos);
+    UserWrittenType = StringRef(UserWrittenType).trim();
+    Pos = UserWrittenType.rfind(" ");
+    UserWrittenType.erase(Pos);
+    UserWrittenType = StringRef(UserWrittenType).trim();
   }
 
   return UserWrittenType;
