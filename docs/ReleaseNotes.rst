@@ -139,7 +139,7 @@ Improvements to clang-tidy
 - New `readability-one-name-per-declaration
   <http://clang.llvm.org/extra/clang-tidy/checks/readability-one-name-per-declaration.html>`_ check
 
-  Finds declarations declaring more that one name.
+  Finds declarations declaring more than one name.
 
 - New `readability-redundant-declaration
   <http://clang.llvm.org/extra/clang-tidy/checks/readability-redundant-declaration.html>`_ check

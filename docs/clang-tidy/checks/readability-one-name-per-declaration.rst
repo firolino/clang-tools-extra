@@ -3,8 +3,8 @@
 readability-one-name-per-declaration
 ====================================
 
-This check can be used to find declarations, which declare more than one name. 
-It helps improving readability and prevents potential bugs caused by inattention
+This check can be used to find declarations that declare more than one name.
+It helps improve readability and prevents potential bugs caused by inattention
 and C/C++ syntax specifics.
 
 In addition, appropriate fix-it hints are provided and all user-intended 
@@ -53,7 +53,5 @@ and function parameters are not matched. Moreover, it does not match on the foll
 .. code-block:: c++
 
   {
-    class A { } Object1, Object2;
-    
     for(int i = 0, j = 0;;);
   }

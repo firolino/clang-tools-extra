@@ -12,7 +12,6 @@
 
 #include "clang/AST/ASTContext.h"
 #include "clang/Lex/Lexer.h"
-#include <vector>
 
 namespace clang {
 namespace tidy {
