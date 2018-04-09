@@ -34,7 +34,7 @@ void OneNamePerDeclarationCheck::registerMatchers(MatchFinder *Finder) {
 
 void OneNamePerDeclarationCheck::check(const MatchFinder::MatchResult &Result) {
   const auto *DeclStatement = Result.Nodes.getNodeAs<DeclStmt>("declstmt");
-  if (!DeclStatement)
+  if (!DeclStatement){ TEST check this, when running on llvm source
     return;
 
   // Macros will be ignored
@@ -160,7 +160,7 @@ OneNamePerDeclarationCheck::getUserWrittenType(const DeclStmt *DeclStmt,
   // UserWrittenType might be and we want ->
   // const int S::* -> const int
   // const int *&   -> const int
-  // long **        -> long int
+  // long **        -> long
   size_t Pos = std::string::npos;
 
   if (StmtType->isPointerType() || StmtType->isArrayType() ||
