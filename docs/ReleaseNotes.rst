@@ -1,5 +1,5 @@
 ===================================================
-Extra Clang Tools 4.0.0 (In-Progress) Release Notes
+Extra Clang Tools 7.0.0 (In-Progress) Release Notes
 ===================================================
 
 .. contents::
@@ -10,15 +10,15 @@ Written by the `LLVM Team <http://llvm.org/>`_
 
 .. warning::
 
-   These are in-progress notes for the upcoming Extra Clang Tools 4.0 release.
-   You may prefer the `Extra Clang Tools 3.9 Release Notes
-   <http://llvm.org/releases/3.9.0/tools/clang/tools/extra/docs/ReleaseNotes.html>`_.
+   These are in-progress notes for the upcoming Extra Clang Tools 7 release.
+   Release notes for previous releases can be found on
+   `the Download Page <http://releases.llvm.org/download.html>`_.
 
 Introduction
 ============
 
 This document contains the release notes for the Extra Clang Tools, part of the
-Clang release 4.0.0. Here we describe the status of the Extra Clang Tools in
+Clang release 7.0.0. Here we describe the status of the Extra Clang Tools in
 some detail, including major improvements from the previous release and new
 feature work. All LLVM releases may be downloaded from the `LLVM releases web
 site <http://llvm.org/releases/>`_.
@@ -32,7 +32,7 @@ main Clang web page, this document applies to the *next* release, not
 the current one. To see the release notes for a specific release, please
 see the `releases page <http://llvm.org/releases/>`_.
 
-What's New in Extra Clang Tools 4.0.0?
+What's New in Extra Clang Tools 7.0.0?
 ======================================
 
 Some of the major new features and improvements to Extra Clang Tools are listed
@@ -52,123 +52,154 @@ The improvements are...
 Improvements to clang-rename
 ----------------------------
 
-- Emacs integration was added.
+The improvements are...
 
 Improvements to clang-tidy
 --------------------------
 
-- New `cppcoreguidelines-slicing
-  <http://clang.llvm.org/extra/clang-tidy/checks/cppcoreguidelines-slicing.html>`_ check
+- New module `abseil` for checks related to the `Abseil <https://abseil.io>`_
+  library.
 
-  Flags slicing of member variables or vtable.
+- New module ``portability``.
 
-- New `cppcoreguidelines-special-member-functions
-  <http://clang.llvm.org/extra/clang-tidy/checks/cppcoreguidelines-special-member-functions.html>`_ check
+- New module ``zircon`` for checks related to Fuchsia's Zircon kernel.
 
-  Flags classes where some, but not all, special member functions are user-defined.
+- New :doc:`bugprone-parent-virtual-call
+  <clang-tidy/checks/bugprone-parent-virtual-call>` check
 
-- New `misc-move-forwarding-reference
-  <http://clang.llvm.org/extra/clang-tidy/checks/misc-move-forwarding-reference.html>`_ check
+  Detects and fixes calls to grand-...parent virtual methods instead of calls
+  to overridden parent's virtual methods.
 
-  Warns when ``std::move`` is applied to a forwarding reference instead of
-  ``std::forward``.
+- New :doc:`bugprone-throw-keyword-missing
+  <clang-tidy/checks/bugprone-throw-keyword-missing>` check
 
-- `misc-pointer-and-integral-operation` check was removed.
+  Diagnoses when a temporary object that appears to be an exception is
+  constructed but not thrown.
 
-- New `misc-use-after-move
-  <http://clang.llvm.org/extra/clang-tidy/checks/misc-use-after-move.html>`_ check
+- New :doc:`bugprone-unused-return-value
+  <clang-tidy/checks/bugprone-unused-return-value>` check
 
-  Warns if an object is used after it has been moved, without an intervening
-  reinitialization.
+  Warns on unused function return values.
 
-- `modernize-make-unique
-  <http://clang.llvm.org/extra/clang-tidy/checks/modernize-make-unique.html>`_
-  and `modernize-make-shared
-  <http://clang.llvm.org/extra/clang-tidy/checks/modernize-make-shared.html>`_
-  now handle calls to the smart pointer's ``reset()`` method.
+- New :doc:`cppcoreguidelines-avoid-goto
+  <clang-tidy/checks/cppcoreguidelines-avoid-goto>` check
 
-- The `modernize-use-auto
-  <http://clang.llvm.org/extra/clang-tidy/checks/modernize-use-auto.html>`_ check
-  now warns about variable declarations that are initialized with a cast.
+  The usage of ``goto`` for control flow is error prone and should be replaced
+  with looping constructs. Every backward jump is rejected. Forward jumps are
+  only allowed in nested loops.
 
-- The modernize-use-default check has been renamed to `modernize-use-equals-default
-  <http://clang.llvm.org/extra/clang-tidy/checks/modernize-use-equals-default.html>`_.
+- New :doc:`fuchsia-multiple-inheritance
+  <clang-tidy/checks/fuchsia-multiple-inheritance>` check
 
-- New `modernize-use-equals-delete
-  <http://clang.llvm.org/extra/clang-tidy/checks/modernize-use-equals-delete.html>`_ check
+  Warns if a class inherits from multiple classes that are not pure virtual.
 
-  Adds ``= delete`` to unimplemented private special member functions.
+- New :doc:`abseil-string-find-startswith
+  <clang-tidy/checks/abseil-string-find-startswith>` check
 
-- New `modernize-use-transparent-functors
-  <http://clang.llvm.org/extra/clang-tidy/checks/modernize-use-transparent-functors.html>`_ check
+  Checks whether a ``std::string::find()`` result is compared with 0, and
+  suggests replacing with ``absl::StartsWith()``.
 
-  Replaces uses of non-transparent functors with transparent ones where applicable.
+- New :doc:`fuchsia-statically-constructed-objects
+  <clang-tidy/checks/fuchsia-statically-constructed-objects>` check
 
-- New `mpi-buffer-deref
-  <http://clang.llvm.org/extra/clang-tidy/checks/mpi-buffer-deref.html>`_ check
+  Warns if global, non-trivial objects with static storage are constructed,
+  unless the object is statically initialized with a ``constexpr`` constructor
+  or has no explicit constructor.
 
-  Flags buffers which are insufficiently dereferenced when passed to an MPI function call.
+- New :doc:`fuchsia-trailing-return
+  <clang-tidy/checks/fuchsia-trailing-return>` check
 
-- New `mpi-type-mismatch
-  <http://clang.llvm.org/extra/clang-tidy/checks/mpi-type-mismatch.html>`_ check
+  Functions that have trailing returns are disallowed, except for those
+  using ``decltype`` specifiers and lambda with otherwise unutterable
+  return types.
 
-  Flags MPI function calls with a buffer type and MPI data type mismatch.
+- New :doc:`hicpp-multiway-paths-covered
+  <clang-tidy/checks/hicpp-multiway-paths-covered>` check
 
-- New `performance-inefficient-string-concatenation
-  <http://clang.llvm.org/extra/clang-tidy/checks/performance-inefficient-string-concatenation.html>`_ check
+  Checks on ``switch`` and ``if`` - ``else if`` constructs that do not cover all possible code paths.
 
-  Warns about the performance overhead arising from concatenating strings using
-  the ``operator+``, instead of ``operator+=``.
+- New :doc:`modernize-use-uncaught-exceptions
+  <clang-tidy/checks/modernize-use-uncaught-exceptions>` check
 
-- `readability-container-size-empty
-  <http://clang.llvm.org/extra/clang-tidy/checks/readability-container-size-empty.html>`_ check
-  supports arbitrary containers with with suitable ``empty()`` and ``size()``
-  methods.
+  Finds and replaces deprecated uses of ``std::uncaught_exception`` to
+  ``std::uncaught_exceptions``.
 
-- New `readability-misplaced-array-index
-  <http://clang.llvm.org/extra/clang-tidy/checks/readability-misplaced-array-index.html>`_ check
+- New :doc:`portability-simd-intrinsics
+  <clang-tidy/checks/portability-simd-intrinsics>` check
 
-  Warns when there is array index before the [] instead of inside it.
+  Warns or suggests alternatives if SIMD intrinsics are used which can be replaced by
+  ``std::experimental::simd`` operations.
 
-- New `readability-non-const-parameter
-  <http://clang.llvm.org/extra/clang-tidy/checks/readability-non-const-parameter.html>`_ check
+- New :doc:`zircon-temporary-objects
+  <clang-tidy/checks/zircon-temporary-objects>` check
 
-  Flags function parameters of a pointer type that could be changed to point to
-  a constant type instead.
+  Warns on construction of specific temporary objects in the Zircon kernel.
 
-- New `readability-one-name-per-declaration
-  <http://clang.llvm.org/extra/clang-tidy/checks/readability-one-name-per-declaration.html>`_ check
+- New alias :doc:`hicpp-avoid-goto
+  <clang-tidy/checks/hicpp-avoid-goto>` to :doc:`cppcoreguidelines-avoid-goto
+  <clang-tidy/checks/cppcoreguidelines-avoid-goto>`
+  added.
 
-  Finds declarations declaring more than one name.
+- The 'misc-forwarding-reference-overload' check was renamed to :doc:`bugprone-forwarding-reference-overload
+  <clang-tidy/checks/bugprone-forwarding-reference-overload>`
 
-- New `readability-redundant-declaration
-  <http://clang.llvm.org/extra/clang-tidy/checks/readability-redundant-declaration.html>`_ check
+- The 'misc-incorrect-roundings' check was renamed to :doc:`bugprone-incorrect-roundings
+  <clang-tidy/checks/bugprone-incorrect-roundings>`
 
-  Finds redundant variable and function declarations.
+- The 'misc-lambda-function-name' check was renamed to :doc:`bugprone-lambda-function-name
+  <clang-tidy/checks/bugprone-lambda-function-name>`
 
-- New `readability-redundant-member-init
-  <http://clang.llvm.org/extra/clang-tidy/checks/readability-redundant-member-init.html>`_ check
+- The 'misc-macro-parentheses' check was renamed to :doc:`bugprone-macro-parentheses
+  <clang-tidy/checks/bugprone-macro-parentheses>`
 
-  Flags member initializations that are unnecessary because the same default
-  constructor would be called if they were not present.
+- The 'misc-macro-repeated-side-effects' check was renamed to :doc:`bugprone-macro-repeated-side-effects
+  <clang-tidy/checks/bugprone-macro-repeated-side-effects>`
 
-- The `readability-redundant-string-cstr
-  <http://clang.llvm.org/extra/clang-tidy/checks/readability-redundant-string-cstr.html>`_ check
-  now warns about redundant calls to data() too.
+- The 'misc-misplaced-widening-cast' check was renamed to :doc:`bugprone-misplaced-widening-cast
+  <clang-tidy/checks/bugprone-misplaced-widening-cast>`
 
-Fixed bugs:
+- The 'misc-sizeof-container' check was renamed to :doc:`bugprone-sizeof-container
+  <clang-tidy/checks/bugprone-sizeof-container>`
 
-- `modernize-make-unique
-  <http://clang.llvm.org/extra/clang-tidy/checks/modernize-make-unique.html>`_
-  and `modernize-make-shared
-  <http://clang.llvm.org/extra/clang-tidy/checks/modernize-make-shared.html>`_
-  Calling ``make_{unique|shared}`` from within a member function of a type
-  with a private or protected constructor would be ill-formed.
+- The 'misc-sizeof-expression' check was renamed to :doc:`bugprone-sizeof-expression
+  <clang-tidy/checks/bugprone-sizeof-expression>`
+
+- The 'misc-string-compare' check was renamed to :doc:`readability-string-compare
+  <clang-tidy/checks/readability-string-compare>`
+
+- The 'misc-string-integer-assignment' check was renamed to :doc:`bugprone-string-integer-assignment
+  <clang-tidy/checks/bugprone-string-integer-assignment>`
+
+- The 'misc-string-literal-with-embedded-nul' check was renamed to :doc:`bugprone-string-literal-with-embedded-nul
+  <clang-tidy/checks/bugprone-string-literal-with-embedded-nul>`
+
+- The 'misc-suspicious-enum-usage' check was renamed to :doc:`bugprone-suspicious-enum-usage
+  <clang-tidy/checks/bugprone-suspicious-enum-usage>`
+
+- The 'misc-suspicious-missing-comma' check was renamed to :doc:`bugprone-suspicious-missing-comma
+  <clang-tidy/checks/bugprone-suspicious-missing-comma>`
+
+- The 'misc-suspicious-semicolon' check was renamed to :doc:`bugprone-suspicious-semicolon
+  <clang-tidy/checks/bugprone-suspicious-semicolon>`
+
+- The 'misc-suspicious-string-compare' check was renamed to :doc:`bugprone-suspicious-string-compare
+  <clang-tidy/checks/bugprone-suspicious-string-compare>`
+
+- The 'misc-swapped-arguments' check was renamed to :doc:`bugprone-swapped-arguments
+  <clang-tidy/checks/bugprone-swapped-arguments>`
+
+- The 'misc-undelegated-constructor' check was renamed to :doc:`bugprone-undelegated-constructor
+  <clang-tidy/checks/bugprone-undelegated-constructor>`
+
+- The 'misc-unused-raii' check was renamed to :doc:`bugprone-unused-raii
+  <clang-tidy/checks/bugprone-unused-raii>`
+
+- The 'google-runtime-member-string-references' check was removed.
 
 Improvements to include-fixer
 -----------------------------
 
-- Emacs integration was added.
+The improvements are...
 
 Improvements to modularize
 --------------------------

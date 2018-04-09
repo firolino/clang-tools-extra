@@ -8,6 +8,8 @@ add_clang_library(clangTidyPlugin
   clangFrontend
   clangSema
   clangTidy
+  clangTidyAndroidModule
+  clangTidyAbseilModule
   clangTidyBoostModule
   clangTidyCERTModule
   clangTidyCppCoreGuidelinesModule
@@ -16,7 +18,9 @@ add_clang_library(clangTidyPlugin
   clangTidyMiscModule
   clangTidyModernizeModule
   clangTidyMPIModule
+  clangTidyObjCModule
   clangTidyPerformanceModule
+  clangTidyPortabilityModule
   clangTidyReadabilityModule
   clangTooling
   )

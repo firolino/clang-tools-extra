@@ -32,22 +32,16 @@ AST_MATCHER(CXXRecordDecl, hasDefaultConstructor) {
 }
 
 // Iterate over all the fields in a record type, both direct and indirect (e.g.
-// if the record contains an anonmyous struct). If OneFieldPerUnion is true and
-// the record type (or indirect field) is a union, forEachField will stop after
-// the first field.
+// if the record contains an anonmyous struct).
 template <typename T, typename Func>
-void forEachField(const RecordDecl &Record, const T &Fields,
-                  bool OneFieldPerUnion, Func &&Fn) {
+void forEachField(const RecordDecl &Record, const T &Fields, Func &&Fn) {
   for (const FieldDecl *F : Fields) {
     if (F->isAnonymousStructOrUnion()) {
       if (const CXXRecordDecl *R = F->getType()->getAsCXXRecordDecl())
-        forEachField(*R, R->fields(), OneFieldPerUnion, Fn);
+        forEachField(*R, R->fields(), Fn);
     } else {
       Fn(F);
     }
-
-    if (OneFieldPerUnion && Record.isUnion())
-      break;
   }
 }
 
@@ -125,12 +119,12 @@ struct IntializerInsertion {
     SourceLocation Location;
     switch (Placement) {
     case InitializerPlacement::New:
-      Location = utils::lexer::getPreviousNonCommentToken(
+      Location = utils::lexer::getPreviousToken(
                      Context, Constructor.getBody()->getLocStart())
                      .getLocation();
       break;
     case InitializerPlacement::Before:
-      Location = utils::lexer::getPreviousNonCommentToken(
+      Location = utils::lexer::getPreviousToken(
                      Context, Where->getSourceRange().getBegin())
                      .getLocation();
       break;
@@ -196,7 +190,7 @@ computeInsertions(const CXXConstructorDecl::init_const_range &Inits,
 
       // Add all fields between current field up until the next intializer.
       for (; Decl != std::end(OrderedDecls) && *Decl != InitDecl; ++Decl) {
-        if (const T *D = dyn_cast<T>(*Decl)) {
+        if (const auto *D = dyn_cast<T>(*Decl)) {
           if (DeclsToInit.count(D) > 0)
             Insertions.back().Initializers.emplace_back(getName(D));
         }
@@ -208,7 +202,7 @@ computeInsertions(const CXXConstructorDecl::init_const_range &Inits,
 
   // Add remaining decls that require initialization.
   for (; Decl != std::end(OrderedDecls); ++Decl) {
-    if (const T *D = dyn_cast<T>(*Decl)) {
+    if (const auto *D = dyn_cast<T>(*Decl)) {
       if (DeclsToInit.count(D) > 0)
         Insertions.back().Initializers.emplace_back(getName(D));
     }
@@ -227,7 +221,7 @@ void getInitializationsInOrder(const CXXRecordDecl &ClassDecl,
       Decls.emplace_back(Decl);
     }
   }
-  forEachField(ClassDecl, ClassDecl.fields(), false,
+  forEachField(ClassDecl, ClassDecl.fields(),
                [&](const FieldDecl *F) { Decls.push_back(F); });
 }
 
@@ -353,7 +347,7 @@ void ProTypeMemberInitCheck::checkMissingMemberInitializer(
 
   // Gather all fields (direct and indirect) that need to be initialized.
   SmallPtrSet<const FieldDecl *, 16> FieldsToInit;
-  forEachField(ClassDecl, ClassDecl.fields(), false, [&](const FieldDecl *F) {
+  forEachField(ClassDecl, ClassDecl.fields(), [&](const FieldDecl *F) {
     if (!F->hasInClassInitializer() &&
         utils::type_traits::isTriviallyDefaultConstructible(F->getType(),
                                                             Context) &&
@@ -379,12 +373,12 @@ void ProTypeMemberInitCheck::checkMissingMemberInitializer(
   // Collect all fields in order, both direct fields and indirect fields from
   // anonmyous record types.
   SmallVector<const FieldDecl *, 16> OrderedFields;
-  forEachField(ClassDecl, ClassDecl.fields(), false,
+  forEachField(ClassDecl, ClassDecl.fields(),
                [&](const FieldDecl *F) { OrderedFields.push_back(F); });
 
   // Collect all the fields we need to initialize, including indirect fields.
   SmallPtrSet<const FieldDecl *, 16> AllFieldsToInit;
-  forEachField(ClassDecl, FieldsToInit, false,
+  forEachField(ClassDecl, FieldsToInit,
                [&](const FieldDecl *F) { AllFieldsToInit.insert(F); });
   if (AllFieldsToInit.empty())
     return;
@@ -404,11 +398,17 @@ void ProTypeMemberInitCheck::checkMissingMemberInitializer(
   // Collect all fields but only suggest a fix for the first member of unions,
   // as initializing more than one union member is an error.
   SmallPtrSet<const FieldDecl *, 16> FieldsToFix;
-  forEachField(ClassDecl, FieldsToInit, true, [&](const FieldDecl *F) {
+  SmallPtrSet<const RecordDecl *, 4> UnionsSeen;
+  forEachField(ClassDecl, OrderedFields, [&](const FieldDecl *F) {
+    if (!FieldsToInit.count(F))
+      return;
     // Don't suggest fixes for enums because we don't know a good default.
     // Don't suggest fixes for bitfields because in-class initialization is not
-    // possible.
-    if (!F->getType()->isEnumeralType() && !F->isBitField())
+    // possible until C++2a.
+    if (F->getType()->isEnumeralType() ||
+        (!getLangOpts().CPlusPlus2a && F->isBitField()))
+      return;
+    if (!F->getParent()->isUnion() || UnionsSeen.insert(F->getParent()).second)
       FieldsToFix.insert(F);
   });
   if (FieldsToFix.empty())
@@ -449,6 +449,9 @@ void ProTypeMemberInitCheck::checkMissingBaseClassInitializer(
 
   // Remove any bases that were explicitly written in the initializer list.
   if (Ctor) {
+    if (Ctor->isImplicit())
+      return;
+
     for (const CXXCtorInitializer *Init : Ctor->inits()) {
       if (Init->isBaseInitializer() && Init->isWritten())
         BasesToInit.erase(Init->getBaseClass()->getAsCXXRecordDecl());
